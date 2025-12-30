@@ -15,35 +15,39 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 2. ฟังก์ชันเริ่มงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
+    // 1. รอให้ LINE เช็คตัวตนให้เสร็จก่อน (ใช้ await)
     await initLIFF(); 
 
-    const userPhone = localStorage.getItem('userPhone'); // อันนี้จะเก็บ Line ID
+    const userPhone = localStorage.getItem('userPhone');
     const path = window.location.pathname.toLowerCase();
 
+    // เช็คประเภทหน้าจอ
     const isLoginPage = path.includes('login.html');
     const isRegisterPage = path.includes('register.html');
     const isAdminPage = path.includes('admin');
+    const isIndexPage = path.includes('index.html') || path.endsWith('/');
 
-    // เติมชื่อจาก LINE ลงช่องสมัครอัตโนมัติ (ถ้ามี)
+    // 2. ถ้าเป็นหน้าสมัครสมาชิก ให้เติมชื่อจาก LINE (ถ้ามี)
     const tempName = localStorage.getItem('tempLineName');
     if (tempName && document.getElementById('regName')) {
         document.getElementById('regName').value = tempName;
     }
 
-    // เช็คสิทธิ์การเข้าถึง
-    if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    // ถ้าล็อกอินแล้ว ห้ามกลับไปหน้าสมัคร/ล็อกอิน
-    if (userPhone && (isLoginPage || isRegisterPage)) {
-        window.location.href = 'index.html';
-        return;
+    // 3. จัดการ Logic การเด้งหน้าจอ (ป้องกัน Loop)
+    if (!userPhone) {
+        // ถ้ายังไม่ได้ล็อกอิน และไม่ใช่หน้า Login/Register/Admin ให้ไปหน้า Login
+        if (!isLoginPage && !isRegisterPage && !isAdminPage) {
+            window.location.replace('login.html'); // ใช้ replace เพื่อไม่ให้กด back กลับมาได้
+        }
+    } else {
+        // ถ้าล็อกอินแล้ว (มี userPhone) ห้ามอยู่หน้า Login หรือ Register
+        if (isLoginPage || isRegisterPage) {
+            window.location.replace('index.html');
+        }
     }
 
+    // 4. โหลดข้อมูลแสดงผล
     loadUserData();
 };
 
@@ -161,6 +165,7 @@ function logout() {
     localStorage.clear();
     window.location.href = 'login.html';
 }
+
 
 
 
