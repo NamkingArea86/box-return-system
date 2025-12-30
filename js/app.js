@@ -19,7 +19,7 @@ const storage = firebase.storage();
 window.onload = async function() {
     await initLIFF(); 
 
-    const userPhone = localStorage.getItem('userPhone');
+    const userPhone = localStorage.getItem('userPhone'); // อันนี้จะเก็บ Line ID
     const path = window.location.pathname.toLowerCase();
 
     const isLoginPage = path.includes('login.html');
@@ -38,13 +38,13 @@ window.onload = async function() {
         return;
     }
     
+    // ถ้าล็อกอินแล้ว ห้ามกลับไปหน้าสมัคร/ล็อกอิน
     if (userPhone && (isLoginPage || isRegisterPage)) {
         window.location.href = 'index.html';
         return;
     }
 
     loadUserData();
-    if (document.getElementById('pointsDisplay')) renderPoints();
 };
 
 // 3. ฟังก์ชันเชื่อมต่อ LINE
@@ -58,7 +58,9 @@ async function initLIFF() {
             const userDoc = await db.collection("users").doc(lineUserId).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                localStorage.setItem('userPhone', lineUserId);
+                // บันทึกค่าลงเครื่อง
+                localStorage.setItem('userPhone', lineUserId); // ใช้ Line ID เป็นคีย์หลัก
+                localStorage.setItem('realPhone', userData.phone); // ✅ เก็บเบอร์โทรจริงไว้โชว์
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('userPoints', userData.points || 0);
             } else {
@@ -74,39 +76,30 @@ async function initLIFF() {
     }
 }
 
-// แก้ไขฟังก์ชัน performRegister ใน js/app.js
+// 4. ฟังก์ชันลงทะเบียน
 async function performRegister() {
     const name = document.getElementById('regName').value;
     const phone = document.getElementById('regPhone').value;
     const pass = document.getElementById('regPassword').value;
     const confirmPass = document.getElementById('regConfirmPassword').value;
-    
-    // ดึง Line ID จาก LocalStorage ที่เราเก็บไว้ตอน initLIFF
     const lineUserId = localStorage.getItem('tempLineUserId'); 
 
-    if (!lineUserId) {
-        alert("ไม่พบข้อมูล LINE กรุณาเปิดแอปผ่าน LINE");
-        return;
-    }
-
-    if (!name || !phone || !pass) {
-        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-        return;
-    }
+    if (!lineUserId) { alert("กรุณาเปิดแอปผ่าน LINE"); return; }
+    if (!name || !phone || !pass) { alert("กรุณากรอกข้อมูลให้ครบถ้วน"); return; }
+    if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
-        // บันทึกโดยใช้ lineUserId เป็นชื่อเอกสาร (Document ID) เสมอ
         await db.collection("users").doc(lineUserId).set({
             name: name,
-            phone: phone,
+            phone: phone, // เบอร์โทรที่กรอก
             password: pass,
             lineId: lineUserId,
             points: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // บันทึกลงเครื่องให้ตรงกัน
         localStorage.setItem('userPhone', lineUserId); 
+        localStorage.setItem('realPhone', phone); // ✅ เก็บเบอร์โทรจริง
         localStorage.setItem('userName', name);
         localStorage.setItem('userPoints', 0);
 
@@ -117,44 +110,24 @@ async function performRegister() {
     }
 }
 
-// 5. ฟังก์ชันเข้าสู่ระบบ (สำหรับคนไม่ได้ใช้ LINE)
-async function performLogin() {
-    const phone = document.getElementById('loginPhone').value;
-    const pass = document.getElementById('loginPassword').value;
-
-    if (!phone || !pass) { alert("กรุณากรอกข้อมูล"); return; }
-
-    try {
-        // ค้นหาทั้งในชื่อ ID (เบอร์โทร)
-        const userDoc = await db.collection("users").doc(phone).get();
-        if (userDoc.exists) {
-            const userData = userDoc.data();
-            if (userData.password === pass) {
-                localStorage.setItem('userPhone', phone);
-                localStorage.setItem('userName', userData.name);
-                localStorage.setItem('userPoints', userData.points || 0);
-                alert("เข้าสู่ระบบสำเร็จ");
-                window.location.href = 'index.html';
-            } else { alert("รหัสผ่านผิด"); }
-        } else { alert("ไม่พบข้อมูลผู้ใช้"); }
-    } catch (error) { alert("Error: " + error.message); }
-}
-
+// 5. แสดงผลข้อมูล
 function loadUserData() {
     const name = localStorage.getItem('userName') || 'ผู้ใช้งาน';
-    const phone = localStorage.getItem('userPhone') || '...';
+    // ✅ ดึงเบอร์จริงมาโชว์ ถ้าไม่มีให้ใช้ตัวสำรอง
+    const displayPhone = localStorage.getItem('realPhone') || localStorage.getItem('userPhone') || '...';
     const points = localStorage.getItem('userPoints') || '0';
 
     if (document.getElementById('username')) document.getElementById('username').innerText = name;
-    if (document.getElementById('userphone')) document.getElementById('userphone').innerText = phone;
+    if (document.getElementById('userphone')) document.getElementById('userphone').innerText = displayPhone;
     if (document.getElementById('points')) document.getElementById('points').innerText = points;
     if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = points;
 }
 
+// 6. ฟังก์ชันคืนกล่อง
 async function returnBoxWithImage() {
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
-    const userPhone = localStorage.getItem('userPhone');
+    const userPhone = localStorage.getItem('userPhone'); // ใช้ Line ID บันทึก
 
     if (!boxId || !imageFile) { alert("กรุณาระบุหมายเลขกล่องและถ่ายรูป"); return; }
 
@@ -180,13 +153,13 @@ async function returnBoxWithImage() {
         localStorage.setItem('userPoints', currentPoints);
 
         alert("คืนกล่องสำเร็จ! ได้รับ 10 คะแนน");
-        location.href = 'index.html';
+        window.location.href = 'index.html';
     } catch (error) { alert("เกิดข้อผิดพลาดในการบันทึก"); }
 }
 
 function logout() {
     localStorage.clear();
-    location.href = 'login.html';
+    window.location.href = 'login.html';
 }
 
 
