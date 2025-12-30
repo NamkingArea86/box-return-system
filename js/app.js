@@ -1,3 +1,23 @@
+// ฟังก์ชันเริ่มต้นการเชื่อมต่อ LINE
+async function initLIFF() {
+    try {
+        // นำรหัส LIFF ID ของคุณมาใส่ตรงนี้
+        await liff.init({ liffId: "2008458855-wE0xODVx" }); 
+
+        if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            // เก็บชื่อและรูปจาก LINE ลงเครื่อง
+            localStorage.setItem('userName', profile.displayName);
+            localStorage.setItem('userPhone', profile.userId); // ใช้ LINE ID แทนเบอร์โทร
+            loadUserData();
+        } else {
+            // ถ้ายังไม่ล็อกอิน ให้ล็อกอินผ่าน LINE
+            liff.login();
+        }
+    } catch (error) {
+        console.error("LIFF Error:", error);
+    }
+}
 // 1. ตั้งค่า Firebase (ใช้ค่าเดิมของคุณ)
 const firebaseConfig = {
   apiKey: "AIzaSyDRYTht-6h5QDqFTGO6sr44TfuvDfApAPc",
@@ -15,15 +35,7 @@ const storage = firebase.storage();
 
 // 2. ฟังก์ชันเริ่มงาน (แก้ไขใหม่เพื่อเช็คการล็อกอิน)
 window.onload = function() {
-    const userPhone = localStorage.getItem('userPhone');
-    
-    // ตรวจสอบว่าถ้าไม่มีข้อมูลโทรศัพท์ (ไม่ได้ล็อกอิน) และไม่ได้อยู่ที่หน้า login หรือ register
-    // ให้ดีดไปหน้า login.html ทันที
-    if (!userPhone && !window.location.pathname.includes('login.html') && !window.location.pathname.includes('register.html')) {
-        window.location.href = 'login.html';
-        return;
-    }
-
+    initLIFF();
     // ถ้าล็อกอินแล้ว ให้โหลดข้อมูลปกติ
     loadUserData();
     if (document.getElementById('pointsDisplay')) renderPoints();
@@ -159,4 +171,5 @@ function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
+
 
