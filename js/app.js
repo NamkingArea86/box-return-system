@@ -15,31 +15,36 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
+// 2. ฟังก์ชันเริ่มงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
-    await initLIFF(); // ถ้าใช้ LINE ให้ดึงข้อมูลมาก่อน
+    await initLIFF(); 
 
     const userPhone = localStorage.getItem('userPhone');
-    const path = window.location.pathname.toLowerCase(); // ทำเป็นตัวเล็กทั้งหมดกันพลาด
+    const path = window.location.pathname.toLowerCase();
 
-    // เช็คว่าตอนนี้อยู่ที่หน้าไหน
     const isLoginPage = path.includes('login.html');
     const isRegisterPage = path.includes('register.html');
     const isAdminPage = path.includes('admin');
 
-    // ถ้าไม่มีข้อมูลผู้ใช้ และ ไม่ได้อยู่ที่หน้า Login/Register/Admin ให้ดีดไปหน้า Login
+    // เติมชื่อจาก LINE ลงช่องสมัครอัตโนมัติ (ถ้ามี)
+    const tempName = localStorage.getItem('tempLineName');
+    if (tempName && document.getElementById('regName')) {
+        document.getElementById('regName').value = tempName;
+    }
+
+    // เช็คสิทธิ์การเข้าถึง
     if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
-        console.log("ไม่พบผู้ใช้ ระบบกำลังนำคุณไปหน้า Login");
         window.location.href = 'login.html';
         return;
     }
     
-    // ถ้าล็อกอินแล้วแต่ดันหลงไปหน้า Login หรือ Register ให้ดีดกลับหน้าหลัก
     if (userPhone && (isLoginPage || isRegisterPage)) {
         window.location.href = 'index.html';
         return;
     }
 
     loadUserData();
+    if (document.getElementById('pointsDisplay')) renderPoints();
 };
 
 // 3. ฟังก์ชันเชื่อมต่อ LINE
@@ -50,7 +55,6 @@ async function initLIFF() {
             const profile = await liff.getProfile();
             const lineUserId = profile.userId;
 
-            // ตรวจสอบว่าเคยสมัครสมาชิกหรือยัง
             const userDoc = await db.collection("users").doc(lineUserId).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
@@ -58,47 +62,37 @@ async function initLIFF() {
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('userPoints', userData.points || 0);
             } else {
-                // ถ้ายังไม่เคยสมัคร ให้เก็บชื่อไว้ไปใส่ในช่อง Register
                 localStorage.setItem('tempLineName', profile.displayName);
                 localStorage.setItem('tempLineUserId', lineUserId);
-                
-                // ถ้ายังไม่ได้อยู่ที่หน้าสมัคร ให้ดีดไปหน้าสมัคร
                 if (!window.location.pathname.includes('register.html')) {
                     window.location.href = 'register.html';
                 }
             }
-        } else {
-            // กรณีเปิดผ่านเบราว์เซอร์ปกติที่ไม่ได้ล็อกอิน LINE
-            // คุณอาจจะให้เขาใช้ระบบ Login แบบเบอร์โทรปกติ
         }
     } catch (error) {
         console.error("LIFF Error:", error);
     }
 }
 
+// 4. ฟังก์ชันลงทะเบียน (ใช้เวอร์ชันที่รองรับ LINE)
 async function performRegister() {
-    console.log("เริ่มฟังก์ชันลงทะเบียน..."); // ไว้เช็คใน Console ว่าฟังก์ชันทำงานไหม
-    
     const name = document.getElementById('regName').value;
     const phone = document.getElementById('regPhone').value;
     const pass = document.getElementById('regPassword').value;
     const confirmPass = document.getElementById('regConfirmPassword').value;
     
-    // ดึง Line ID มาจาก LocalStorage (ที่ได้จาก initLIFF)
     const lineUserId = localStorage.getItem('tempLineUserId') || phone;
 
     if (!name || !phone || !pass) {
         alert("กรุณากรอกข้อมูลให้ครบถ้วน");
         return;
     }
-
     if (pass !== confirmPass) {
         alert("รหัสผ่านไม่ตรงกัน");
         return;
     }
 
     try {
-        console.log("กำลังบันทึกลง Firebase...");
         await db.collection("users").doc(lineUserId).set({
             name: name,
             phone: phone,
@@ -115,9 +109,31 @@ async function performRegister() {
         alert("ลงทะเบียนสำเร็จ!");
         window.location.href = 'index.html';
     } catch (error) {
-        console.error("Firebase Error:", error);
         alert("สมัครไม่สำเร็จ: " + error.message);
     }
+}
+
+// 5. ฟังก์ชันเข้าสู่ระบบ (สำหรับคนไม่ได้ใช้ LINE)
+async function performLogin() {
+    const phone = document.getElementById('loginPhone').value;
+    const pass = document.getElementById('loginPassword').value;
+
+    if (!phone || !pass) { alert("กรุณากรอกข้อมูล"); return; }
+
+    try {
+        // ค้นหาทั้งในชื่อ ID (เบอร์โทร)
+        const userDoc = await db.collection("users").doc(phone).get();
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData.password === pass) {
+                localStorage.setItem('userPhone', phone);
+                localStorage.setItem('userName', userData.name);
+                localStorage.setItem('userPoints', userData.points || 0);
+                alert("เข้าสู่ระบบสำเร็จ");
+                window.location.href = 'index.html';
+            } else { alert("รหัสผ่านผิด"); }
+        } else { alert("ไม่พบข้อมูลผู้ใช้"); }
+    } catch (error) { alert("Error: " + error.message); }
 }
 
 function loadUserData() {
@@ -131,79 +147,7 @@ function loadUserData() {
     if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = points;
 }
 
-// --- ส่วนที่เพิ่มใหม่: ฟังก์ชันสำหรับหน้า Login และ Register ---
-
-// ฟังก์ชันเข้าสู่ระบบ (เรียกใช้จาก login.html)
-async function performLogin() {
-    const phone = document.getElementById('loginPhone').value;
-    const pass = document.getElementById('loginPassword').value;
-
-    if (!phone || !pass) {
-        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-        return;
-    }
-
-    try {
-        // ค้นหาผู้ใช้จากเบอร์โทรใน Firestore
-        const userDoc = await db.collection("users").doc(phone).get();
-
-        if (userDoc.exists) {
-            const userData = userDoc.data();
-            if (userData.password === pass) {
-                // เก็บข้อมูลลงเครื่อง
-                localStorage.setItem('userPhone', phone);
-                localStorage.setItem('userName', userData.name);
-                localStorage.setItem('userPoints', userData.points || 0);
-                
-                alert("เข้าสู่ระบบสำเร็จ");
-                window.location.href = 'index.html';
-            } else {
-                alert("รหัสผ่านไม่ถูกต้อง");
-            }
-        } else {
-            alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ");
-        }
-    } catch (error) {
-        alert("เกิดข้อผิดพลาด: " + error.message);
-    }
-}
-
-// ฟังก์ชันลงทะเบียน (เรียกใช้จาก register.html)
-async function performRegister() {
-    const name = document.getElementById('regName').value;
-    const phone = document.getElementById('regPhone').value;
-    const pass = document.getElementById('regPassword').value;
-    const confirmPass = document.getElementById('regConfirmPassword').value;
-
-    if (!name || !phone || !pass) {
-        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-        return;
-    }
-    if (pass !== confirmPass) {
-        alert("รหัสผ่านไม่ตรงกัน");
-        return;
-    }
-
-    try {
-        // บันทึกลง Firestore โดยใช้เบอร์โทรเป็น ID ของ Document
-        await db.collection("users").doc(phone).set({
-            name: name,
-            phone: phone,
-            password: pass,
-            points: 0,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        alert("ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ");
-        window.location.href = 'login.html';
-    } catch (error) {
-        alert("ไม่สามารถลงทะเบียนได้: " + error.message);
-    }
-}
-
-
 async function returnBoxWithImage() {
-    // ... โค้ดเดิมของคุณ (แต่เพิ่มการอัปเดตแต้มใน Firestore ด้วย) ...
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
     const userPhone = localStorage.getItem('userPhone');
@@ -224,27 +168,22 @@ async function returnBoxWithImage() {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // อัปเดตคะแนนใน Firestore
         const userRef = db.collection("users").doc(userPhone);
-        await userRef.update({
-            points: firebase.firestore.FieldValue.increment(10)
-        });
+        await userRef.update({ points: firebase.firestore.FieldValue.increment(10) });
 
-        // อัปเดตคะแนนในเครื่อง (LocalStorage)
         let currentPoints = parseInt(localStorage.getItem('userPoints') || 0);
         currentPoints += 10;
         localStorage.setItem('userPoints', currentPoints);
 
-        alert("คืนกล่องสำเร็จ! คุณได้รับ 10 คะแนน");
+        alert("คืนกล่องสำเร็จ! ได้รับ 10 คะแนน");
         location.href = 'index.html';
-    } catch (error) { alert("เกิดข้อผิดพลาด"); }
+    } catch (error) { alert("เกิดข้อผิดพลาดในการบันทึก"); }
 }
 
 function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
-
 
 
 
