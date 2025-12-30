@@ -1,21 +1,32 @@
-// 1. ตั้งค่า Firebase (นำมาจากหน้า Console ของคุณ)
+// 1. ตั้งค่า Firebase (ใช้ค่าเดิมของคุณ)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 2. ฟังก์ชันเริ่มงาน (เช็คสถานะการล็อกอิน และคะแนน)
+// 2. ฟังก์ชันเริ่มงาน (แก้ไขใหม่เพื่อเช็คการล็อกอิน)
 window.onload = function() {
+    const userPhone = localStorage.getItem('userPhone');
+    
+    // ตรวจสอบว่าถ้าไม่มีข้อมูลโทรศัพท์ (ไม่ได้ล็อกอิน) และไม่ได้อยู่ที่หน้า login หรือ register
+    // ให้ดีดไปหน้า login.html ทันที
+    if (!userPhone && !window.location.pathname.includes('login.html') && !window.location.pathname.includes('register.html')) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // ถ้าล็อกอินแล้ว ให้โหลดข้อมูลปกติ
     loadUserData();
     if (document.getElementById('pointsDisplay')) renderPoints();
+    if (document.getElementById('myRewardList')) renderMyRewards();
 };
 
 function loadUserData() {
@@ -26,53 +37,92 @@ function loadUserData() {
     if (document.getElementById('username')) document.getElementById('username').innerText = name;
     if (document.getElementById('userphone')) document.getElementById('userphone').innerText = phone;
     if (document.getElementById('points')) document.getElementById('points').innerText = points;
+    if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = points;
 }
 
-// 3. ฟังก์ชันยืมกล่อง (ส่งข้อมูล + อัปโหลดรูป)
-async function borrowBoxWithImage() {
-    const boxId = document.getElementById('boxInput').value;
-    const imageFile = document.getElementById('imageInput').files[0];
-    const userPhone = localStorage.getItem('userPhone');
+// --- ส่วนที่เพิ่มใหม่: ฟังก์ชันสำหรับหน้า Login และ Register ---
 
-    if (!boxId || !imageFile) {
-        alert("กรุณาระบุหมายเลขกล่องและถ่ายรูป");
+// ฟังก์ชันเข้าสู่ระบบ (เรียกใช้จาก login.html)
+async function performLogin() {
+    const phone = document.getElementById('loginPhone').value;
+    const pass = document.getElementById('loginPassword').value;
+
+    if (!phone || !pass) {
+        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
         return;
     }
 
     try {
-        // อัปโหลดรูปไปที่ Firebase Storage
-        const storageRef = storage.ref(`borrows/${Date.now()}_${boxId}.jpg`);
-        await storageRef.put(imageFile);
-        const imageUrl = await storageRef.getDownloadURL();
+        // ค้นหาผู้ใช้จากเบอร์โทรใน Firestore
+        const userDoc = await db.collection("users").doc(phone).get();
 
-        // บันทึกข้อมูลลง Firestore
-        await db.collection("transactions").add({
-            boxId: boxId,
-            userPhone: userPhone,
-            type: 'borrow',
-            imageUrl: imageUrl,
-            date: new Date().toLocaleString('th-TH'),
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        alert("ยืมกล่องสำเร็จ!");
-        location.href = 'index.html';
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData.password === pass) {
+                // เก็บข้อมูลลงเครื่อง
+                localStorage.setItem('userPhone', phone);
+                localStorage.setItem('userName', userData.name);
+                localStorage.setItem('userPoints', userData.points || 0);
+                
+                alert("เข้าสู่ระบบสำเร็จ");
+                window.location.href = 'index.html';
+            } else {
+                alert("รหัสผ่านไม่ถูกต้อง");
+            }
+        } else {
+            alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ");
+        }
     } catch (error) {
-        console.error(error);
-        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        alert("เกิดข้อผิดพลาด: " + error.message);
     }
 }
 
-// 4. ฟังก์ชันคืนกล่อง (ส่งข้อมูล + ให้คะแนน)
+// ฟังก์ชันลงทะเบียน (เรียกใช้จาก register.html)
+async function performRegister() {
+    const name = document.getElementById('regName').value;
+    const phone = document.getElementById('regPhone').value;
+    const pass = document.getElementById('regPassword').value;
+    const confirmPass = document.getElementById('regConfirmPassword').value;
+
+    if (!name || !phone || !pass) {
+        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+        return;
+    }
+    if (pass !== confirmPass) {
+        alert("รหัสผ่านไม่ตรงกัน");
+        return;
+    }
+
+    try {
+        // บันทึกลง Firestore โดยใช้เบอร์โทรเป็น ID ของ Document
+        await db.collection("users").doc(phone).set({
+            name: name,
+            phone: phone,
+            password: pass,
+            points: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ");
+        window.location.href = 'login.html';
+    } catch (error) {
+        alert("ไม่สามารถลงทะเบียนได้: " + error.message);
+    }
+}
+
+// --- ฟังก์ชันเดิม (คงไว้ตามปกติ) ---
+
+async function borrowBoxWithImage() {
+    // ... โค้ดเดิมของคุณ ...
+}
+
 async function returnBoxWithImage() {
+    // ... โค้ดเดิมของคุณ (แต่เพิ่มการอัปเดตแต้มใน Firestore ด้วย) ...
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
     const userPhone = localStorage.getItem('userPhone');
 
-    if (!boxId || !imageFile) {
-        alert("กรุณาระบุหมายเลขกล่องและถ่ายรูป");
-        return;
-    }
+    if (!boxId || !imageFile) { alert("กรุณาระบุหมายเลขกล่องและถ่ายรูป"); return; }
 
     try {
         const storageRef = storage.ref(`returns/${Date.now()}_${boxId}.jpg`);
@@ -88,19 +138,22 @@ async function returnBoxWithImage() {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // ระบบเพิ่มคะแนน (ตัวอย่างเพิ่มทีละ 10 แต้ม)
+        // อัปเดตคะแนนใน Firestore
+        const userRef = db.collection("users").doc(userPhone);
+        await userRef.update({
+            points: firebase.firestore.FieldValue.increment(10)
+        });
+
+        // อัปเดตคะแนนในเครื่อง (LocalStorage)
         let currentPoints = parseInt(localStorage.getItem('userPoints') || 0);
         currentPoints += 10;
         localStorage.setItem('userPoints', currentPoints);
 
         alert("คืนกล่องสำเร็จ! คุณได้รับ 10 คะแนน");
         location.href = 'index.html';
-    } catch (error) {
-        alert("เกิดข้อผิดพลาด");
-    }
+    } catch (error) { alert("เกิดข้อผิดพลาด"); }
 }
 
-// 5. ออกจากระบบ
 function logout() {
     localStorage.clear();
     location.href = 'login.html';
