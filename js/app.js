@@ -16,42 +16,37 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 
 window.onload = async function() {
-    // 1. รอให้ LINE เช็คตัวตนให้เสร็จก่อน (ใช้ await)
-    await initLIFF(); 
-
-    const userPhone = localStorage.getItem('userPhone');
+    // 1. ตรวจสอบก่อนว่าในเครื่องมีข้อมูลอยู่แล้วไหม
+    let userPhone = localStorage.getItem('userPhone');
     const path = window.location.pathname.toLowerCase();
-
-    // เช็คประเภทหน้าจอ
+    
     const isLoginPage = path.includes('login.html');
     const isRegisterPage = path.includes('register.html');
     const isAdminPage = path.includes('admin');
-    const isIndexPage = path.includes('index.html') || path.endsWith('/');
 
-    // 2. ถ้าเป็นหน้าสมัครสมาชิก ให้เติมชื่อจาก LINE (ถ้ามี)
-    const tempName = localStorage.getItem('tempLineName');
-    if (tempName && document.getElementById('regName')) {
-        document.getElementById('regName').value = tempName;
+    // 2. ถ้ายังไม่มีข้อมูลในเครื่อง ให้รอถาม LINE (initLIFF)
+    if (!userPhone) {
+        await initLIFF();
+        userPhone = localStorage.getItem('userPhone'); // เช็คอีกรอบหลังจากรอ LINE
     }
 
-    // 3. จัดการ Logic การเด้งหน้าจอ (ป้องกัน Loop)
+    // 3. Logic การตัดสินใจย้ายหน้า (ย้ายครั้งเดียวจบ)
     if (!userPhone) {
-        // ถ้ายังไม่ได้ล็อกอิน และไม่ใช่หน้า Login/Register/Admin ให้ไปหน้า Login
+        // ถ้าถาม LINE แล้วก็ยังไม่มีข้อมูล (คนใหม่จริง ๆ)
         if (!isLoginPage && !isRegisterPage && !isAdminPage) {
-            window.location.replace('login.html'); // ใช้ replace เพื่อไม่ให้กด back กลับมาได้
+            window.location.replace('login.html');
         }
     } else {
-        // ถ้าล็อกอินแล้ว (มี userPhone) ห้ามอยู่หน้า Login หรือ Register
+        // ถ้ามีข้อมูลแล้ว ห้ามอยู่หน้าสมัคร/ล็อกอิน
         if (isLoginPage || isRegisterPage) {
             window.location.replace('index.html');
         }
     }
 
-    // 4. โหลดข้อมูลแสดงผล
+    // 4. แสดงผลข้อมูล
     loadUserData();
 };
 
-// 3. ฟังก์ชันเชื่อมต่อ LINE
 async function initLIFF() {
     try {
         await liff.init({ liffId: "2008458855-wE0xODVx" });
@@ -59,20 +54,18 @@ async function initLIFF() {
             const profile = await liff.getProfile();
             const lineUserId = profile.userId;
 
+            // ตรวจสอบใน Firebase
             const userDoc = await db.collection("users").doc(lineUserId).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                // บันทึกค่าลงเครื่อง
-                localStorage.setItem('userPhone', lineUserId); // ใช้ Line ID เป็นคีย์หลัก
-                localStorage.setItem('realPhone', userData.phone); // ✅ เก็บเบอร์โทรจริงไว้โชว์
+                localStorage.setItem('userPhone', lineUserId);
+                localStorage.setItem('realPhone', userData.phone);
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('userPoints', userData.points || 0);
             } else {
+                // ถ้าไม่เคยสมัคร ให้เตรียมชื่อไว้เฉยๆ แต่อย่าเพิ่งดีดหน้าในนี้ (ให้ onload จัดการ)
                 localStorage.setItem('tempLineName', profile.displayName);
                 localStorage.setItem('tempLineUserId', lineUserId);
-                if (!window.location.pathname.includes('register.html')) {
-                    window.location.href = 'register.html';
-                }
             }
         }
     } catch (error) {
@@ -165,6 +158,7 @@ function logout() {
     localStorage.clear();
     window.location.href = 'login.html';
 }
+
 
 
 
