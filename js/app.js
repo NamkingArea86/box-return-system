@@ -15,30 +15,30 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 2. ฟังก์ชันเริ่มต้นทำงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
-    // --- ส่วนของ LIFF ---
-    await initLIFF();
+    await initLIFF(); // ถ้าใช้ LINE ให้ดึงข้อมูลมาก่อน
 
-    // --- ส่วนดึงชื่อจาก LINE มาใส่ช่อง Register ---
-    const tempName = localStorage.getItem('tempLineName');
-    if (tempName && document.getElementById('regName')) {
-        document.getElementById('regName').value = tempName;
-        // หลังจากใช้เสร็จอาจจะลบออกเพื่อไม่ให้ค้าง
-        // localStorage.removeItem('tempLineName'); 
-    }
-
-    // --- ตรวจสอบสิทธิ์การเข้าถึงหน้าปกติ ---
     const userPhone = localStorage.getItem('userPhone');
-    const path = window.location.pathname;
-    const isPublicPage = path.includes('login.html') || path.includes('register.html') || path.includes('admin');
+    const path = window.location.pathname.toLowerCase(); // ทำเป็นตัวเล็กทั้งหมดกันพลาด
 
-    if (!userPhone && !isPublicPage) {
+    // เช็คว่าตอนนี้อยู่ที่หน้าไหน
+    const isLoginPage = path.includes('login.html');
+    const isRegisterPage = path.includes('register.html');
+    const isAdminPage = path.includes('admin');
+
+    // ถ้าไม่มีข้อมูลผู้ใช้ และ ไม่ได้อยู่ที่หน้า Login/Register/Admin ให้ดีดไปหน้า Login
+    if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
+        console.log("ไม่พบผู้ใช้ ระบบกำลังนำคุณไปหน้า Login");
         window.location.href = 'login.html';
         return;
     }
+    
+    // ถ้าล็อกอินแล้วแต่ดันหลงไปหน้า Login หรือ Register ให้ดีดกลับหน้าหลัก
+    if (userPhone && (isLoginPage || isRegisterPage)) {
+        window.location.href = 'index.html';
+        return;
+    }
 
-    // โหลดข้อมูลผู้ใช้ปกติ
     loadUserData();
 };
 
@@ -244,6 +244,7 @@ function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
+
 
 
 
