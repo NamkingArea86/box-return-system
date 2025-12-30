@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบหลังบ้าน - Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; font-size: 14px; }
+        th { background-color: #2E7D32; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .img-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 5px; cursor: pointer; }
+        .status-borrow { color: #e53935; font-weight: bold; }
+        .status-return { color: #2e7d32; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>📊 รายงานการยืม-คืน (Admin)</h2>
+
+    <div class="box">
+        <h3>สรุปรายการล่าสุด</h3>
+        <div id="loading">กำลังโหลดข้อมูล...</div>
+        <table id="adminTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>วัน-เวลา</th>
+                    <th>เบอร์โทรผู้ใช้</th>
+                    <th>เลขกล่อง</th>
+                    <th>ประเภท</th>
+                    <th>หลักฐาน</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 1. ใส่ Config ของ Firebase ของคุณที่นี่ (เหมือนในไฟล์ app.js)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. ดึงข้อมูลจาก Firestore แบบ Real-time
+        db.collection("transactions").orderBy("timestamp", "desc")
+            .onSnapshot((snapshot) => {
+                const tableBody = document.getElementById("tableBody");
+                const loading = document.getElementById("loading");
+                const table = document.getElementById("adminTable");
+                
+                let html = "";
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const typeText = data.type === 'borrow' ? '📥 ยืม' : '📤 คืน';
+                    const typeClass = data.type === 'borrow' ? 'status-borrow' : 'status-return';
+                    
+                    html += `
+                        <tr>
+                            <td>${data.date || '-'}</td>
+                            <td>${data.userPhone || 'ไม่ระบุ'}</td>
+                            <td><b>${data.boxId}</b></td>
+                            <td class="${typeClass}">${typeText}</td>
+                            <td>
+                                <a href="${data.imageUrl}" target="_blank">
+                                    <img src="${data.imageUrl}" class="img-preview" alt="หลักฐาน">
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tableBody.innerHTML = html;
+                loading.style.display = "none";
+                table.style.display = "table";
+            }, (error) => {
+                console.error("Error fetching data: ", error);
+                document.getElementById("loading").innerText = "เกิดข้อผิดพลาดในการดึงข้อมูล";
+            });
+    </script>
+
+</body>
+</html>

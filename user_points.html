@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตารางคะแนนผู้ใช้</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        .leaderboard-table { width: 100%; border-collapse: collapse; background: white; border-radius: 15px; overflow: hidden; }
+        .leaderboard-table th, .leaderboard-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .leaderboard-table th { background-color: #4CAF50; color: white; font-weight: 600; }
+        .rank-1 { background-color: #fff9c4; font-weight: bold; } /* สีพิเศษสำหรับอันดับ 1 */
+        .points-badge { background: #2E7D32; color: white; padding: 5px 12px; border-radius: 20px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <h2>🏆 อันดับคะแนนสะสม</h2>
+
+    <div class="box">
+        <table class="leaderboard-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">อันดับ</th>
+                    <th>ชื่อ / เบอร์โทร</th>
+                    <th style="text-align: right;">คะแนน</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+                <tr>
+                    <td colspan="3" style="text-align:center;">กำลังโหลดข้อมูล...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <span class="nav-icon">🏠</span> หน้าหลัก
+        </a>
+        <a href="rewards.html" class="nav-item active">
+            <span class="nav-icon">🎁</span> รางวัล
+        </a>
+    </div>
+
+    <script>
+        // 1. ใส่ Config ของ Firebase ของคุณที่นี่
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. ดึงข้อมูลคะแนนผู้ใช้ เรียงจากมากไปน้อย (desc)
+        db.collection("users").orderBy("points", "desc").limit(20)
+            .onSnapshot((snapshot) => {
+                const body = document.getElementById("leaderboardBody");
+                let html = "";
+                let rank = 1;
+
+                if (snapshot.empty) {
+                    body.innerHTML = "<tr><td colspan='3' style='text-align:center;'>ยังไม่มีข้อมูลคะแนน</td></tr>";
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const user = doc.data();
+                    const rowClass = rank === 1 ? 'rank-1' : '';
+                    
+                    html += `
+                        <tr class="${rowClass}">
+                            <td>${rank}</td>
+                            <td>
+                                <b>${user.name || 'ไม่ประสงค์ออกนาม'}</b><br>
+                                <small style="color:#888;">${user.phone || '-'}</small>
+                            </td>
+                            <td style="text-align: right;">
+                                <span class="points-badge">${user.points || 0} แต้ม</span>
+                            </td>
+                        </tr>
+                    `;
+                    rank++;
+                });
+                
+                body.innerHTML = html;
+            });
+    </script>
+</body>
+</html>

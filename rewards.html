@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แลกรางวัล</title>
+    <script src="js/app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="box" style="text-align: center; background: linear-gradient(to bottom, #ffffff, #f9fbe7);">
+        <p style="color:#555; margin-bottom:5px;">คะแนนคงเหลือ</p>
+        <h1 style="margin:0; font-size: 3rem; color:#2E7D32;" id="pointsDisplay">...</h1>
+        <p style="font-size: 0.8rem; color: #888;">แต้ม</p>
+    </div>
+
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="switchTab('redeem')">🎁 แลกรางวัล</button>
+        <button class="tab-btn" onclick="switchTab('myRewards')">🎫 รางวัลของฉัน</button>
+    </div>
+
+    <div id="redeem" class="tab-content active">
+        <div class="empty-state">
+             <span class="empty-icon">🎁</span>
+             <h3>เร็วๆ นี้</h3>
+             <p style="font-size:14px; color:#888;">เรากำลังเตรียมของรางวัลสุดพิเศษสำหรับคุณ<br>โปรดติดตามตอนต่อไป!</p>
+        </div>
+    </div>
+
+    <div id="myRewards" class="tab-content">
+        <h3 style="margin-left:5px;">คูปองของฉัน</h3>
+        <div id="myRewardList">
+            </div>
+    </div>
+
+    <br><br><br>
+
+    <div class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <span class="nav-icon">🏠</span> หน้าหลัก
+        </a>
+        <a href="scan_borrow.html" class="nav-item">
+            <span class="nav-icon">📥</span> ยืม
+        </a>
+        <a href="scan_return.html" class="nav-item">
+            <span class="nav-icon">📤</span> คืน
+        </a>
+        <a href="history.html" class="nav-item">
+            <span class="nav-icon">📘</span> ประวัติ
+        </a>
+        <a href="rewards.html" class="nav-item active">
+            <span class="nav-icon">🎁</span> รางวัล
+        </a>
+    </div>
+
+    <script>
+        // ฟังก์ชันสลับ Tab
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // ฟังก์ชันแสดงรายการรางวัลของฉัน (ถูกเรียกจาก app.js ด้วย)
+        function renderMyRewards() {
+            let rewards = JSON.parse(localStorage.getItem('myRewards')) || [];
+            let container = document.getElementById('myRewardList');
+
+            if (rewards.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span class="empty-icon">🎫</span>
+                        <p>ยังไม่มีรางวัลที่แลกไว้</p>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            rewards.slice().reverse().forEach(item => {
+                html += `
+                    <div class="my-reward-item">
+                        <strong style="font-size:18px; color:#2E7D32;">${item.name}</strong>
+                        <div style="font-size:12px; color:#888; margin-top:5px;">
+                            วันที่แลก: ${item.date}
+                        </div>
+                        <button class="use-btn" onclick="alert('ใช้งานสำเร็จ')">กดใช้สิทธิ์</button>
+                    </div>`;
+            });
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap');
+
+/* =========================================
+   1. Global Styles (สไตล์หลักทั้งเว็บ)
+   ========================================= */
+body {
+    font-family: 'Kanit', sans-serif;
+    margin: 0;
+    background-color: #F1F8E9; /* พื้นหลังเขียวอ่อน */
+    color: #333;
+    padding: 20px 20px 90px 20px; /* เว้นที่ด้านล่างเผื่อเมนู */
+}
+
+h2 {
+    color: #2E7D32; /* เขียวเข้ม */
+    margin-top: 0;
+    font-size: 1.6rem;
+}
+
+h3 { color: #444; }
+
+/* กล่องสีขาว (Container) */
+.box {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* ช่องกรอกข้อมูลทั่วไป (หน้ายืม-คืน) */
+input[type="text"] {
+    width: 100%;
+    padding: 15px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    border: 2px solid #ddd;
+    font-size: 16px;
+    box-sizing: border-box;
+    outline: none;
+}
+input[type="text"]:focus { border-color: #4CAF50; }
+
+/* ปุ่มกดทั่วไป */
+button {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #66BB6A, #43A047); /* ไล่สีเขียว */
+    color: white;
+    border: none;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(76, 175, 80, 0.3);
+    transition: transform 0.1s;
+}
+button:active { transform: scale(0.98); }
+
+/* ปุ่ม Logout */
+button.logout {
+    background: #fff;
+    color: #d32f2f;
+    border: 1px solid #ef9a9a;
+    box-shadow: none;
+}
+
+/* คะแนนสะสม (สีเหลือง) */
+#points {
+    color: #FFC107;
+    text-shadow: 1px 1px 0px rgba(0,0,0,0.1);
+    font-weight: bold;
+}
+
+/* =========================================
+   2. เมนูด้านล่าง (Sticky Footer)
+   ========================================= */
+.bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 -2px 15px rgba(0,0,0,0.08);
+    display: flex; justify-content: space-around; padding: 12px 0;
+    z-index: 1000;
+    border-top-left-radius: 20px; border-top-right-radius: 20px;
+    box-sizing: border-box;
+}
+
+.nav-item {
+    text-align: center; text-decoration: none; color: #9e9e9e;
+    font-size: 11px; flex-grow: 1; display: flex; flex-direction: column; align-items: center;
+}
+
+.nav-item.active { color: #2E7D32; font-weight: bold; }
+.nav-icon { font-size: 22px; margin-bottom: 4px; display: block; }
+.nav-item.active .nav-icon { transform: translateY(-3px); }
+
+/* =========================================
+   3. สไตล์เฉพาะหน้า (History, Rewards, Scan)
+   ========================================= */
+
+/* หน้า History */
+.history-item {
+    background: #FAFAFA;
+    border-left: 5px solid #FFC107;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+/* หน้า Rewards (Tabs) */
+.tab-container {
+    display: flex; justify-content: center; margin-bottom: 20px;
+    background: #fff; padding: 5px; border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.tab-btn {
+    flex: 1; padding: 12px; border: none; background: transparent;
+    color: #888; font-size: 16px; font-weight: bold; cursor: pointer;
+    border-radius: 8px; transition: all 0.3s; margin: 0; box-shadow: none;
+}
+.tab-btn.active {
+    background-color: #4CAF50; color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.tab-content { display: none; animation: fadeIn 0.3s; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* หน้า Rewards (Items) */
+.reward-card {
+    background: #fff; border: 1px solid #eee; border-radius: 12px;
+    padding: 15px; margin-bottom: 15px; display: flex;
+    justify-content: space-between; align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.reward-card button {
+    width: auto; margin: 0; padding: 8px 20px; font-size: 14px;
+    background: #FFC107; color: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.my-reward-item {
+    background: white; border-left: 5px solid #FFC107;
+    padding: 15px; margin-bottom: 10px; border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02); position: relative;
+}
+.use-btn {
+    background: #eee; color: #555; font-size: 12px;
+    padding: 5px 10px; width: auto; position: absolute;
+    right: 15px; top: 15px; margin: 0; box-shadow: none;
+}
+
+/* หน้าว่าง (Empty State) */
+.empty-state { text-align: center; color: #999; margin-top: 40px; padding: 20px; }
+.empty-icon { font-size: 50px; display: block; margin-bottom: 15px; opacity: 0.4; }
+
+/* ปุ่มอัปโหลดรูป (หน้า Scan) */
+.upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+.btn-upload {
+    border: 2px dashed #4CAF50; color: #2E7D32; background-color: #e8f5e9;
+    padding: 20px; border-radius: 10px; font-size: 16px; font-weight: bold;
+    width: 100%; cursor: pointer; text-align: center; margin-bottom: 15px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.btn-upload input[type=file] {
+    font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;
+}
+#previewImage { width: 100%; max-height: 300px; object-fit: cover; border-radius: 10px; display: none; margin-bottom: 20px; border: 1px solid #ddd; }
+
+/* =========================================
+   4. หน้า Login & Register (ดีไซน์ใหม่)
+   ========================================= */
+
+/* ตั้งค่าพื้นหลังเฉพาะหน้า Login/Register */
+body.login-page {
+    background: linear-gradient(135deg, #a5d6a7, #f1f8e9) !important;
+    height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box;
+}
+
+/* ซ่อนเมนูด้านล่างในหน้านี้ */
+body.login-page .bottom-nav { display: none; }
+
+.login-container {
+    background: white; padding: 40px 30px; border-radius: 25px; /* กล่องโค้งมนขึ้น */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 350px;
+    text-align: center;
+}
+
+.logo-icon {
+    font-size: 60px; margin-bottom: 10px; display: inline-block;
+    background: #e8f5e9; padding: 20px; border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.login-container h2 { margin-bottom: 5px; color: #2E7D32; }
+.login-container p { margin-top: 0; color: #888; font-size: 14px; margin-bottom: 30px; }
+
+label {
+    font-size: 14px; color: #555; margin-left: 10px;
+    margin-bottom: 5px; display: block; font-weight: bold;
+}
+
+/* --- ดีไซน์กล่อง Input แบบแคปซูล (ใหญ่และโค้ง) --- */
+.login-container input[type="text"],
+.login-container input[type="tel"],
+.login-container input[type="password"] {
+    width: 100%;
+    padding: 15px 25px;      /* เพิ่มความกว้าง */
+    margin-bottom: 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 50px;     /* ขอบโค้งมนแบบแคปซูล */
+    font-size: 16px;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+/* เอฟเฟกต์ตอนกดพิมพ์ */
+.login-container input:focus {
+    border-color: #4CAF50;
+    background-color: #fff;
+    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.1);
+}
+
+/* ปรับปุ่มในหน้า Login ให้โค้งมนรับกัน */
+.login-container button {
+    border-radius: 50px;
+    padding: 15px;
+    font-size: 18px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-top: 10px;
+}
+
+/* --- จัดการไอคอนในช่อง Input (สำหรับหน้า Login) --- */
+.input-icon-wrapper { position: relative; margin-bottom: 0; } /* margin จัดการโดย input แล้ว */
+
+.input-icon-wrapper .input-icon {
+    position: absolute;
+    left: 20px;       /* ขยับไอคอนเข้ามา */
+    top: 38%;         /* จัดกึ่งกลางแนวตั้ง (ปรับตามความสูง input) */
+    transform: translateY(-50%);
+    font-size: 22px;
+    color: #4CAF50;
+    z-index: 10;
+}
+
+/* ถ้าช่องไหนมีไอคอน ต้องเว้นที่ซ้ายเพิ่ม */
+.input-icon-wrapper input {
+    padding-left: 55px !important;
+}

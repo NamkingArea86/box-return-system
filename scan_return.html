@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สแกนคืนกล่อง</title>
+    <script src="js/app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h2>📤 คืนกล่อง</h2>
+
+    <div class="box">
+        <p>1. ใส่หมายเลขกล่อง:</p>
+        <input type="text" id="boxInputReturn" placeholder="เช่น 001">
+
+        <p>2. ถ่ายรูปจุดที่คืนกล่อง:</p>
+
+        <div class="upload-btn-wrapper">
+            <div class="btn-upload">
+                <span style="font-size:30px;">📸</span>
+                <span>กดเพื่อเลือกรูป</span>
+                <input type="file" id="imageInputReturn" accept="image/*" capture="environment" onchange="showPreview(event)">
+            </div>
+        </div>
+
+        <img id="previewImage" alt="ตัวอย่างรูปภาพ">
+
+        <button onclick="returnBoxWithImage()">ยืนยันการคืน</button>
+    </div>
+
+    <div class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <span class="nav-icon">🏠</span> หน้าหลัก
+        </a>
+        <a href="scan_borrow.html" class="nav-item">
+            <span class="nav-icon">📥</span> ยืม
+        </a>
+        <a href="scan_return.html" class="nav-item active">
+            <span class="nav-icon">📤</span> คืน
+        </a>
+        <a href="history.html" class="nav-item">
+            <span class="nav-icon">📘</span> ประวัติ
+        </a>
+        <a href="rewards.html" class="nav-item">
+            <span class="nav-icon">🎁</span> รางวัล
+        </a>
+    </div>
+
+    <script>
+        function showPreview(event) {
+            var reader = new FileReader();
+            reader.onload = function(){
+                var output = document.getElementById('previewImage');
+                output.src = reader.result;
+                output.style.display = 'block';
+            };
+            if(event.target.files[0]){
+                reader.readAsDataURL(event.target.files[0]);
+            }
+        }
+    </script>
+
+</body>
+</html>
