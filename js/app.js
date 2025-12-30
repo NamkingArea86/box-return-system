@@ -1,11 +1,12 @@
 // 1. ตั้งค่า Firebase (ใช้ค่าเดิมของคุณ)
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDRYTht-6h5QDqFTGO6sr44TfuvDfApAPc",
+  authDomain: "box-return-system.firebaseapp.com",
+  projectId: "box-return-system",
+  storageBucket: "box-return-system.firebasestorage.app",
+  messagingSenderId: "272291754420",
+  appId: "1:272291754420:web:9ee1c794acbe190309c2e1",
+  measurementId: "G-8PX3LBXM3L"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -158,3 +159,4 @@ function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
+
