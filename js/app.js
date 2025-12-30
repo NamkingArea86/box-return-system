@@ -74,25 +74,28 @@ async function initLIFF() {
     }
 }
 
-// 4. ฟังก์ชันลงทะเบียน (ใช้เวอร์ชันที่รองรับ LINE)
+// แก้ไขฟังก์ชัน performRegister ใน js/app.js
 async function performRegister() {
     const name = document.getElementById('regName').value;
     const phone = document.getElementById('regPhone').value;
     const pass = document.getElementById('regPassword').value;
     const confirmPass = document.getElementById('regConfirmPassword').value;
     
-    const lineUserId = localStorage.getItem('tempLineUserId') || phone;
+    // ดึง Line ID จาก LocalStorage ที่เราเก็บไว้ตอน initLIFF
+    const lineUserId = localStorage.getItem('tempLineUserId'); 
+
+    if (!lineUserId) {
+        alert("ไม่พบข้อมูล LINE กรุณาเปิดแอปผ่าน LINE");
+        return;
+    }
 
     if (!name || !phone || !pass) {
         alert("กรุณากรอกข้อมูลให้ครบถ้วน");
         return;
     }
-    if (pass !== confirmPass) {
-        alert("รหัสผ่านไม่ตรงกัน");
-        return;
-    }
 
     try {
+        // บันทึกโดยใช้ lineUserId เป็นชื่อเอกสาร (Document ID) เสมอ
         await db.collection("users").doc(lineUserId).set({
             name: name,
             phone: phone,
@@ -102,7 +105,8 @@ async function performRegister() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        localStorage.setItem('userPhone', lineUserId);
+        // บันทึกลงเครื่องให้ตรงกัน
+        localStorage.setItem('userPhone', lineUserId); 
         localStorage.setItem('userName', name);
         localStorage.setItem('userPoints', 0);
 
@@ -184,6 +188,7 @@ function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
+
 
 
 
