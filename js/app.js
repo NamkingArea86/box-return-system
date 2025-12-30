@@ -1,42 +1,4 @@
-// ฟังก์ชันเริ่มต้นการเชื่อมต่อ LINE
-async function initLIFF() {
-    try {
-        await liff.init({ liffId: "2008458855-wE0xODVx" });
-
-        if (liff.isLoggedIn()) {
-            const profile = await liff.getProfile();
-            const lineUserId = profile.userId; // ใช้ ID ของ LINE เป็นตัวอ้างอิง
-
-            // ตรวจสอบใน Firebase ว่าเคยลงทะเบียนหรือยัง
-            const userDoc = await db.collection("users").doc(lineUserId).get();
-
-            if (userDoc.exists) {
-                // ✅ กรณีที่เคยลงทะเบียนแล้ว: ดึงข้อมูลมาใส่ LocalStorage และเข้าหน้าหลัก
-                const userData = userDoc.data();
-                localStorage.setItem('userPhone', lineUserId);
-                localStorage.setItem('userName', userData.name);
-                localStorage.setItem('userPoints', userData.points || 0);
-                
-                // ถ้าอยู่ที่หน้า Login หรือ Register ให้ดีดไปหน้าหลัก
-                if (window.location.pathname.includes('login.html') || window.location.pathname.includes('register.html')) {
-                    window.location.href = 'index.html';
-                }
-            } else {
-                // ❌ กรณีเข้าครั้งแรก: ส่งไปหน้า Register พร้อมส่งชื่อจาก LINE ไปด้วย
-                if (!window.location.pathname.includes('register.html')) {
-                    // เก็บชื่อจาก LINE ไว้ชั่วคราวเพื่อให้หน้าลงทะเบียนดึงไปใช้
-                    localStorage.setItem('tempLineName', profile.displayName);
-                    window.location.href = 'register.html';
-                }
-            }
-        } else {
-            liff.login();
-        }
-    } catch (error) {
-        console.error("LIFF Error:", error);
-    }
-}
-// 1. ตั้งค่า Firebase (ใช้ค่าเดิมของคุณ)
+// 1. ตั้งค่า Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDRYTht-6h5QDqFTGO6sr44TfuvDfApAPc",
   authDomain: "box-return-system.firebaseapp.com",
@@ -47,18 +9,105 @@ const firebaseConfig = {
   measurementId: "G-8PX3LBXM3L"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 2. ฟังก์ชันเริ่มงาน (แก้ไขใหม่เพื่อเช็คการล็อกอิน)
-window.onload = function() {
-    initLIFF();
-    // ถ้าล็อกอินแล้ว ให้โหลดข้อมูลปกติ
+// 2. ฟังก์ชันเริ่มต้นทำงานเมื่อโหลดหน้าจอ
+window.onload = async function() {
+    // --- ส่วนของ LIFF ---
+    await initLIFF();
+
+    // --- ส่วนดึงชื่อจาก LINE มาใส่ช่อง Register ---
+    const tempName = localStorage.getItem('tempLineName');
+    if (tempName && document.getElementById('regName')) {
+        document.getElementById('regName').value = tempName;
+        // หลังจากใช้เสร็จอาจจะลบออกเพื่อไม่ให้ค้าง
+        // localStorage.removeItem('tempLineName'); 
+    }
+
+    // --- ตรวจสอบสิทธิ์การเข้าถึงหน้าปกติ ---
+    const userPhone = localStorage.getItem('userPhone');
+    const path = window.location.pathname;
+    const isPublicPage = path.includes('login.html') || path.includes('register.html') || path.includes('admin');
+
+    if (!userPhone && !isPublicPage) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // โหลดข้อมูลผู้ใช้ปกติ
     loadUserData();
-    if (document.getElementById('pointsDisplay')) renderPoints();
-    if (document.getElementById('myRewardList')) renderMyRewards();
 };
+
+// 3. ฟังก์ชันเชื่อมต่อ LINE
+async function initLIFF() {
+    try {
+        await liff.init({ liffId: "2008458855-wE0xODVx" });
+        if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            const lineUserId = profile.userId;
+
+            // ตรวจสอบว่าเคยสมัครสมาชิกหรือยัง
+            const userDoc = await db.collection("users").doc(lineUserId).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                localStorage.setItem('userPhone', lineUserId);
+                localStorage.setItem('userName', userData.name);
+                localStorage.setItem('userPoints', userData.points || 0);
+            } else {
+                // ถ้ายังไม่เคยสมัคร ให้เก็บชื่อไว้ไปใส่ในช่อง Register
+                localStorage.setItem('tempLineName', profile.displayName);
+                localStorage.setItem('tempLineUserId', lineUserId);
+                
+                // ถ้ายังไม่ได้อยู่ที่หน้าสมัคร ให้ดีดไปหน้าสมัคร
+                if (!window.location.pathname.includes('register.html')) {
+                    window.location.href = 'register.html';
+                }
+            }
+        } else {
+            // กรณีเปิดผ่านเบราว์เซอร์ปกติที่ไม่ได้ล็อกอิน LINE
+            // คุณอาจจะให้เขาใช้ระบบ Login แบบเบอร์โทรปกติ
+        }
+    } catch (error) {
+        console.error("LIFF Error:", error);
+    }
+}
+
+// 4. ฟังก์ชันลงทะเบียน (ปรับปรุงให้ใช้ Line ID)
+async function performRegister() {
+    const name = document.getElementById('regName').value;
+    const phone = document.getElementById('regPhone').value;
+    const pass = document.getElementById('regPassword').value;
+    const lineUserId = localStorage.getItem('tempLineUserId') || phone; // ใช้ Line ID ถ้ามี ถ้าไม่มีใช้เบอร์โทร
+
+    if (!name || !phone || !pass) {
+        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+        return;
+    }
+
+    try {
+        await db.collection("users").doc(lineUserId).set({
+            name: name,
+            phone: phone,
+            password: pass,
+            lineId: lineUserId,
+            points: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        localStorage.setItem('userPhone', lineUserId);
+        localStorage.setItem('userName', name);
+        localStorage.setItem('userPoints', 0);
+
+        alert("ลงทะเบียนสำเร็จ!");
+        window.location.href = 'index.html';
+    } catch (error) {
+        alert("สมัครไม่สำเร็จ: " + error.message);
+    }
+}
 
 function loadUserData() {
     const name = localStorage.getItem('userName') || 'ผู้ใช้งาน';
@@ -141,11 +190,6 @@ async function performRegister() {
     }
 }
 
-// --- ฟังก์ชันเดิม (คงไว้ตามปกติ) ---
-
-async function borrowBoxWithImage() {
-    // ... โค้ดเดิมของคุณ ...
-}
 
 async function returnBoxWithImage() {
     // ... โค้ดเดิมของคุณ (แต่เพิ่มการอัปเดตแต้มใน Firestore ด้วย) ...
@@ -189,6 +233,7 @@ function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
+
 
 
 
