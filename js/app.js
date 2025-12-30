@@ -1,17 +1,35 @@
 // ฟังก์ชันเริ่มต้นการเชื่อมต่อ LINE
 async function initLIFF() {
     try {
-        // นำรหัส LIFF ID ของคุณมาใส่ตรงนี้
-        await liff.init({ liffId: "2008458855-wE0xODVx" }); 
+        await liff.init({ liffId: "2008458855-wE0xODVx" });
 
         if (liff.isLoggedIn()) {
             const profile = await liff.getProfile();
-            // เก็บชื่อและรูปจาก LINE ลงเครื่อง
-            localStorage.setItem('userName', profile.displayName);
-            localStorage.setItem('userPhone', profile.userId); // ใช้ LINE ID แทนเบอร์โทร
-            loadUserData();
+            const lineUserId = profile.userId; // ใช้ ID ของ LINE เป็นตัวอ้างอิง
+
+            // ตรวจสอบใน Firebase ว่าเคยลงทะเบียนหรือยัง
+            const userDoc = await db.collection("users").doc(lineUserId).get();
+
+            if (userDoc.exists) {
+                // ✅ กรณีที่เคยลงทะเบียนแล้ว: ดึงข้อมูลมาใส่ LocalStorage และเข้าหน้าหลัก
+                const userData = userDoc.data();
+                localStorage.setItem('userPhone', lineUserId);
+                localStorage.setItem('userName', userData.name);
+                localStorage.setItem('userPoints', userData.points || 0);
+                
+                // ถ้าอยู่ที่หน้า Login หรือ Register ให้ดีดไปหน้าหลัก
+                if (window.location.pathname.includes('login.html') || window.location.pathname.includes('register.html')) {
+                    window.location.href = 'index.html';
+                }
+            } else {
+                // ❌ กรณีเข้าครั้งแรก: ส่งไปหน้า Register พร้อมส่งชื่อจาก LINE ไปด้วย
+                if (!window.location.pathname.includes('register.html')) {
+                    // เก็บชื่อจาก LINE ไว้ชั่วคราวเพื่อให้หน้าลงทะเบียนดึงไปใช้
+                    localStorage.setItem('tempLineName', profile.displayName);
+                    window.location.href = 'register.html';
+                }
+            }
         } else {
-            // ถ้ายังไม่ล็อกอิน ให้ล็อกอินผ่าน LINE
             liff.login();
         }
     } catch (error) {
@@ -171,5 +189,6 @@ function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
+
 
 
