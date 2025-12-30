@@ -76,19 +76,29 @@ async function initLIFF() {
     }
 }
 
-// 4. ฟังก์ชันลงทะเบียน (ปรับปรุงให้ใช้ Line ID)
 async function performRegister() {
+    console.log("เริ่มฟังก์ชันลงทะเบียน..."); // ไว้เช็คใน Console ว่าฟังก์ชันทำงานไหม
+    
     const name = document.getElementById('regName').value;
     const phone = document.getElementById('regPhone').value;
     const pass = document.getElementById('regPassword').value;
-    const lineUserId = localStorage.getItem('tempLineUserId') || phone; // ใช้ Line ID ถ้ามี ถ้าไม่มีใช้เบอร์โทร
+    const confirmPass = document.getElementById('regConfirmPassword').value;
+    
+    // ดึง Line ID มาจาก LocalStorage (ที่ได้จาก initLIFF)
+    const lineUserId = localStorage.getItem('tempLineUserId') || phone;
 
     if (!name || !phone || !pass) {
         alert("กรุณากรอกข้อมูลให้ครบถ้วน");
         return;
     }
 
+    if (pass !== confirmPass) {
+        alert("รหัสผ่านไม่ตรงกัน");
+        return;
+    }
+
     try {
+        console.log("กำลังบันทึกลง Firebase...");
         await db.collection("users").doc(lineUserId).set({
             name: name,
             phone: phone,
@@ -105,6 +115,7 @@ async function performRegister() {
         alert("ลงทะเบียนสำเร็จ!");
         window.location.href = 'index.html';
     } catch (error) {
+        console.error("Firebase Error:", error);
         alert("สมัครไม่สำเร็จ: " + error.message);
     }
 }
@@ -233,6 +244,7 @@ function logout() {
     localStorage.clear();
     location.href = 'login.html';
 }
+
 
 
 
