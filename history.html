@@ -1,14 +1,26 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ประวัติการยืม-คืน</title>
+    <link rel="stylesheet" href="style.css">
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    
+    <style>
+        .empty-state { text-align: center; margin-top: 50px; color: #888; }
+        .empty-icon { font-size: 60px; display: block; margin-bottom: 15px; opacity: 0.5; }
+        .history-container { padding: 10px; margin-bottom: 70px; }
+        h2 { text-align: center; color: #2E7D32; margin-top: 20px; }
+    </style>
+</head>
+<body>
 
-    <script src="js/app.js"></script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <h2>📘 ประวัติการยืม-คืน</h2>
+
     <div style="margin: 15px; padding: 15px; background: #e3f2fd; border-radius: 12px; text-align: center; border: 1px solid #bbdefb;">
         <span style="font-size: 14px; color: #555;">จำนวนครั้งที่คืนกล่องสะสม</span>
         <div style="font-size: 24px; font-weight: bold; color: #1976d2;">
@@ -16,105 +28,42 @@
         </div>
     </div>
 
-    <div id="historyBox">
-        </div>
-    <script src="js/app.js"></script>
-    <link rel="stylesheet" href="style.css">
-    
-    <style>
-        /* CSS สำหรับข้อความเมื่อไม่มีประวัติ */
-        .empty-state {
-            text-align: center;
-            margin-top: 50px;
-            color: #888;
-        }
-        .empty-icon {
-            font-size: 60px;
-            display: block;
-            margin-bottom: 15px;
-            opacity: 0.5;
-        }
-    </style>
-</head>
-<body>
-    <div id="historyBox">
-        </div>
-
-    <script>
-        // ฟังก์ชันนี้จะทำงานทันทีที่โหลดหน้าเว็บ
-        window.onload = function() {
-            // 1. ลองดึงข้อมูลจาก LocalStorage (ชื่อ key 'borrowHistory' ต้องตรงกับที่ app.js คุณบันทึกไว้)
-            // ถ้าคุณใช้ชื่ออื่น แก้ตรง 'borrowHistory' เป็นชื่อนั้นนะครับ
-            const historyData = JSON.parse(localStorage.getItem('borrowHistory')) || [];
-            const container = document.getElementById('historyBox');
-
-            // 2. เช็คว่ามีข้อมูลไหม
-            if (historyData.length === 0) {
-                // กรณี: ไม่มีข้อมูล -> แสดงข้อความแจ้งเตือน
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <span class="empty-icon">📭</span>
-                        <h3>คุณยังไม่เคยยืมกล่องกับเรา</h3>
-                        <p style="font-size:14px;">เริ่มยืมครั้งแรกได้ที่เมนู "ยืม"</p>
-                        <button onclick="location.href='scan_borrow.html'" style="width:auto; margin-top:10px; font-size:14px;">
-                            ไปที่หน้ายืม
-                        </button>
-                    </div>
-                `;
-            } else {
-                // กรณี: มีข้อมูล -> วนลูปแสดงรายการ (ตาม Logic เดิมของคุณ)
-                // ถ้าใน app.js คุณมีฟังก์ชัน renderHistory() อยู่แล้ว บรรทัดข้างล่างนี้อาจจะไม่จำเป็น
-                // แต่เขียนกันเหนียวไว้ครับ
-                let html = '';
-                // กลับรายการให้ล่าสุดอยู่บนสุด (reverse)
-                historyData.slice().reverse().forEach(item => {
-                    // กำหนดสีและข้อความตามสถานะ (ยืม/คืน)
-                    let statusColor = item.type === 'borrow' ? '#e8f5e9' : '#fff3e0'; // เขียวอ่อน / ส้มอ่อน
-                    let icon = item.type === 'borrow' ? '📥' : '📤';
-                    let text = item.type === 'borrow' ? 'ยืมกล่อง' : 'คืนกล่อง';
-                    
-                    html += `
-                    <div class="history-item" style="border-left: 5px solid ${item.type === 'borrow' ? '#4CAF50' : '#FF9800'};">
-                        <div style="display:flex; justify-content:space-between;">
-                            <strong>${icon} ${text}</strong>
-                            <small style="color:#888;">${item.date || 'ไม่ระบุวันที่'}</small>
-                        </div>
-                        <div style="margin-top:5px; font-size:14px;">
-                            หมายเลข: <b>${item.boxId}</b>
-                        </div>
-                    </div>
-                    `;
-                });
-                container.innerHTML = html;
-            }
-            
-            // เรียกฟังก์ชันอื่นที่จำเป็นจาก app.js (เช่น โหลดชื่อ user)
-            if(typeof loadUserData === 'function') loadUserData();
-        };
-    </script>
-
-    <div class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <span class="nav-icon">🏠</span> หน้าหลัก
-        </a>
-        <a href="scan_borrow.html" class="nav-item">
-            <span class="nav-icon">📥</span> ยืม
-        </a>
-        <a href="scan_return.html" class="nav-item">
-            <span class="nav-icon">📤</span> คืน
-        </a>
-        <a href="history.html" class="nav-item active">
-            <span class="nav-icon">📘</span> ประวัติ
-        </a>
-        <a href="rewards.html" class="nav-item">
-            <span class="nav-icon">🎁</span> รางวัล
-        </a>
+    <div id="historyBox" class="history-container">
+        <p style="text-align:center; color:#999;">กำลังโหลดประวัติจากระบบ...</p>
     </div>
 
+    <div class="bottom-nav">
+        <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span> หน้าหลัก</a>
+        <a href="scan_borrow.html" class="nav-item"><span class="nav-icon">📥</span> ยืม</a>
+        <a href="scan_return.html" class="nav-item"><span class="nav-icon">📤</span> คืน</a>
+        <a href="history.html" class="nav-item active"><span class="nav-icon">📘</span> ประวัติ</a>
+        <a href="rewards.html" class="nav-item"><span class="nav-icon">🎁</span> รางวัล</a>
+    </div>
+
+    <script src="js/app.js"></script>
+
+    <script>
+        // เมื่อโหลดหน้าสำเร็จ
+        window.onload = async function() {
+            const userPhone = localStorage.getItem('userPhone');
+            
+            if (!userPhone) {
+                window.location.replace('login.html');
+                return;
+            }
+
+            // 1. โหลดข้อมูลจำนวนการคืน (จาก app.js)
+            if(typeof loadUserData === 'function') {
+                await loadUserData();
+            }
+
+            // 2. ดึงประวัติจาก Firebase โดยตรง (ฟังก์ชันที่คุณมีใน app.js)
+            if(typeof fetchHistoryFromFirebase === 'function') {
+                fetchHistoryFromFirebase(userPhone);
+            } else {
+                document.getElementById('historyBox').innerHTML = "ไม่พบฟังก์ชันดึงข้อมูล";
+            }
+        };
+    </script>
 </body>
-
 </html>
-
-
-
-
