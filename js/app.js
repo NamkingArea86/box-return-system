@@ -240,3 +240,49 @@ function logout() {
     localStorage.clear();
     window.location.replace('login.html');
 }
+
+// 10. ฟังก์ชันการยืมกล่อง
+async function performBorrow() {
+    const boxId = document.getElementById('boxInputBorrow').value;
+    const userPhone = localStorage.getItem('userPhone');
+
+    // ตรวจสอบความครบถ้วนของข้อมูล
+    if (!boxId) { 
+        alert("กรุณาระบุหมายเลขกล่องที่ต้องการยืม"); 
+        return; 
+    }
+
+    if (!userPhone) {
+        alert("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+        window.location.replace('login.html');
+        return;
+    }
+
+    try {
+        const dateStr = new Date().toLocaleString('th-TH');
+
+        // ข้อมูลธุรกรรมการยืม
+        const transData = {
+            boxId: boxId,
+            userPhone: userPhone,
+            type: 'borrow', // ระบุประเภทเป็น 'ยืม'
+            date: dateStr,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // 1. บันทึกข้อมูลลงในคอลเลกชัน transactions
+        await db.collection("transactions").add(transData);
+
+        // 2. (เลือกเพิ่ม) หากต้องการอัปเดตสถานะในตัวผู้ใช้ว่ากำลังยืมอยู่
+        // await db.collection("users").doc(userPhone).update({ status: 'borrowing' });
+
+        alert("ยืมกล่องหมายเลข " + boxId + " สำเร็จ!");
+        
+        // ส่งกลับไปหน้าหลักเพื่อดูข้อมูลที่อัปเดต
+        window.location.replace('index.html');
+
+    } catch (error) {
+        console.error("Borrow Error:", error);
+        alert("เกิดข้อผิดพลาดในการยืม: " + error.message);
+    }
+}
