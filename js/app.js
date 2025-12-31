@@ -34,9 +34,10 @@ window.onload = async function() {
 
     // 3. จัดการการย้ายหน้า
     if (!userPhone) {
-        // ถ้าไม่มีข้อมูลผู้ใช้ (ลบแอคเคาท์ไปแล้ว) และไม่ได้อยู่หน้าสาธารณะ
-        if (!isLoginPage && !isRegisterPage && !isAdminPage) {
-            window.location.replace('login.html');
+        // ❌ ถ้าไม่มีข้อมูลผู้ใช้ และไม่ได้อยู่หน้าสมัครสมาชิก
+        if (!isRegisterPage && !isAdminPage) {
+            // ✅ เปลี่ยนจาก login.html เป็น register.html เพื่อให้มันไปดึงชื่อจาก LINE มาสมัคร
+            window.location.replace('register.html'); 
             return;
         }
     } else {
@@ -168,6 +169,7 @@ function logout() {
     localStorage.clear();
     window.location.href = 'login.html';
 }
+
 
 
 
