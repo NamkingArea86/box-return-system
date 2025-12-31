@@ -32,6 +32,33 @@ window.onload = async function() {
     }
 };
 
+async function performLogin() {
+    const phone = document.getElementById('loginPhone').value.trim();
+    const pass = document.getElementById('loginPassword').value;
+
+    if (!phone || !pass) {
+        alert("กรุณากรอกเบอร์โทรศัพท์และรหัสผ่าน");
+        return;
+    }
+
+    try {
+        const userDoc = await db.collection("users").doc(phone).get();
+        if (userDoc.exists) {
+            if (userDoc.data().password === pass) {
+                localStorage.setItem('userPhone', phone);
+                alert("เข้าสู่ระบบสำเร็จ!");
+                window.location.replace('index.html');
+            } else {
+                alert("รหัสผ่านไม่ถูกต้อง");
+            }
+        } else {
+            alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ");
+        }
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
+
 // 3. ฟังก์ชันลงทะเบียน (แก้ไขจุดที่ทำให้กดไม่ได้)
 async function performRegister() {
     try {
@@ -229,6 +256,7 @@ async function loadUserData() {
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
 
 
 
