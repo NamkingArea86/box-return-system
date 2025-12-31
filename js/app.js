@@ -59,34 +59,50 @@ async function borrowBox() {
 }
 
 // 4. ฟังก์ชันคืนกล่อง
-async function returnBoxWithQR(scannedShopId) {
+async function returnBoxWithQR(scannedText) {
     const boxId = document.getElementById('boxInputReturn').value;
     const userPhone = localStorage.getItem('userPhone');
 
-    if (!boxId) { 
-        alert("กรุณาระบุหมายเลขกล่องก่อนสแกน QR"); 
+    if (!boxId) {
+        alert("กรุณาระบุหมายเลขกล่องก่อนสแกน");
         location.reload();
-        return; 
+        return;
     }
 
+    // 1. ตรวจสอบว่า QR มีคำว่า BOX- นำหน้าหรือไม่ (เพื่อความปลอดภัย)
+    if (!scannedText.startsWith("BOX-")) {
+        alert("QR Code ไม่ถูกต้อง! กรุณาสแกน QR ของระบบเท่านั้น");
+        location.reload();
+        return;
+    }
+
+    // 2. ตัดคำว่า "BOX-" ออกเพื่อให้เหลือแค่ชื่อสถานที่สวยๆ ไปแสดงบนหน้าเว็บ
+    // เช่น จาก "BOX-จุดคืนจาน..." จะเหลือแค่ "จุดคืนจาน..."
+    const cleanLocation = scannedText.replace("BOX-", "");
+
     try {
+        // 3. บันทึกข้อมูลลง Firebase (ใช้ชื่อที่ตัด BOX- ออกแล้ว)
         await db.collection("transactions").add({
             boxId: boxId,
-            shopName: scannedShopId, 
+            shopName: cleanLocation, // บันทึกชื่อที่สะอาดแล้ว
             userPhone: userPhone,
             type: 'return',
             date: new Date().toLocaleString('th-TH'),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        // 4. อัปเดตแต้มและจำนวนครั้งที่คืน
         await db.collection("users").doc(userPhone).update({ 
             points: firebase.firestore.FieldValue.increment(5),
             returnCount: firebase.firestore.FieldValue.increment(1)
         });
 
-        alert("คืนสำเร็จที่: " + scannedShopId + "\nได้รับ 5 แต้ม!");
-        window.location.replace('history.html');
-    } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
+        alert("คืนสำเร็จที่: " + cleanLocation + "\nได้รับ 5 แต้ม!");
+        window.location.replace('history.html'); // ไปหน้าประวัติเพื่อดูผล
+
+    } catch (e) {
+        alert("เกิดข้อผิดพลาด: " + e.message);
+    }
 }
 
 // 5. ฟังก์ชันดึงประวัติ (สำคัญมาก!)
@@ -175,5 +191,6 @@ async function loadUserData() {
     }
 }
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
 
 
