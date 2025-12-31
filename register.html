@@ -21,7 +21,25 @@
         <div style="text-align: left;">
             <label>ชื่อ-นามสกุล</label>
             <input type="text" id="regName" placeholder="เช่น สมชาย ใจดี">
-
+            
+            <label>คณะ / สาขาวิชา</label>
+            <select id="regFaculty" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd;">
+                <option value="">-- เลือกคณะ --</option>
+                <option value="วิศวกรรมศาสตร์">วิศวกรรมศาสตร์</option>
+                <option value="บริหารธุรกิจ">บริหารธุรกิจ</option>
+                <option value="วิทยาศาสตร์">วิทยาศาสตร์</option>
+                <option value="ศิลปศาสตร์">ศิลปศาสตร์</option>
+            </select>
+            
+            <label>ชั้นปีที่เรียน</label>
+            <select id="regYear" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd;">
+                <option value="">-- เลือกชั้นปี --</option>
+                <option value="ปี 1">ปี 1</option>
+                <option value="ปี 2">ปี 2</option>
+                <option value="ปี 3">ปี 3</option>
+                <option value="ปี 4">ปี 4</option>
+                <option value="อื่นๆ">อื่นๆ (เช่น ปริญญาโท/เอก)</option>
+            </select>
             <label>เบอร์โทรศัพท์ (ใช้เป็นชื่อเข้าสู่ระบบ)</label>
             <div class="input-icon-wrapper">
                 <span class="input-icon">📞</span>
@@ -46,6 +64,7 @@
 
 </body>
 </html>
+
 
 
 
