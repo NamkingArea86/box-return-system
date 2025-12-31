@@ -214,4 +214,3 @@ async function fetchHistoryFromFirebase(phone) {
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
-
