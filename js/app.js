@@ -1,4 +1,4 @@
-// 1. ตั้งค่า Firebase (คงเดิม)
+// 1. ตั้งค่า Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDRYTht-6h5QDqFTGO6sr44TfuvDfApAPc",
   authDomain: "box-return-system.firebaseapp.com",
@@ -15,7 +15,7 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 2. ฟังก์ชันทำงานเมื่อโหลดหน้าจอ
+// 2. ฟังก์ชันทำงานเมื่อโหลดหน้าจอ (Router & Initial Data)
 window.onload = async function() {
     const userPhone = localStorage.getItem('userPhone');
     const path = window.location.pathname.toLowerCase();
@@ -24,6 +24,7 @@ window.onload = async function() {
     const isRegisterPage = path.includes('register.html');
     const isAdminPage = path.includes('admin');
 
+    // ตรวจสอบการ Login
     if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
         window.location.replace('login.html');
         return;
@@ -34,17 +35,21 @@ window.onload = async function() {
         return;
     }
 
+    // โหลดข้อมูลตามหน้าที่อยู่
     if (userPhone) {
-        await loadUserData(); // โหลดข้อมูลส่วนตัว
+        await loadUserData(); 
         
-        // ถ้าอยู่หน้าประวัติ ให้ดึงประวัติจาก Firebase
         if (path.includes('history.html')) {
             fetchHistoryFromFirebase(userPhone); 
+        }
+        
+        if (path.includes('rewards.html')) {
+            loadLeaderboard();
         }
     }
 };
 
-// 3-4. performRegister และ performLogin (ถูกต้องแล้ว)
+// 3. ฟังก์ชันลงทะเบียน
 async function performRegister() {
     const name = document.getElementById('regName').value;
     const faculty = document.getElementById('regFaculty').value;
@@ -57,9 +62,10 @@ async function performRegister() {
         alert("กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง"); return; 
     }
 
+    // ตรวจสอบรหัสผ่าน: ต้องมีอักษร+ตัวเลข และไม่เกิน 10 ตัว
     const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
     if (!passRegex.test(pass)) {
-        alert("รหัสผ่านต้องมีอักษร+ตัวเลข และยาวไม่เกิน 10 ตัว");
+        alert("รหัสผ่านต้องมีทั้งตัวอักษรและตัวเลข และมีความยาวไม่เกิน 10 ตัวอักษร");
         return;
     }
 
@@ -67,33 +73,48 @@ async function performRegister() {
 
     try {
         await db.collection("users").doc(phone).set({
-            name: name, faculty: faculty, year: year, phone: phone,
-            password: pass, points: 0, returnCount: 0,
+            name: name,
+            faculty: faculty,
+            year: year,
+            phone: phone,
+            password: pass,
+            points: 0,
+            returnCount: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
         localStorage.setItem('userPhone', phone);
         alert("ลงทะเบียนสำเร็จ!");
         window.location.replace('index.html');
-    } catch (error) { alert("สมัครไม่สำเร็จ: " + error.message); }
+    } catch (error) {
+        alert("สมัครไม่สำเร็จ: " + error.message);
+    }
 }
 
+// 4. ฟังก์ชันเข้าสู่ระบบ
 async function performLogin() {
     const phone = document.getElementById('loginPhone').value;
     const pass = document.getElementById('loginPassword').value;
+
     if (!phone || !pass) { alert("กรุณากรอกข้อมูลให้ครบ"); return; }
+
     try {
         const userDoc = await db.collection("users").doc(phone).get();
-        if (userDoc.exists && userDoc.data().password === pass) {
-            localStorage.setItem('userPhone', phone);
-            window.location.replace('index.html');
-        } else { alert("เบอร์โทรหรือรหัสผ่านไม่ถูกต้อง"); }
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData.password === pass) {
+                localStorage.setItem('userPhone', phone);
+                window.location.replace('index.html');
+            } else { alert("รหัสผ่านไม่ถูกต้อง"); }
+        } else { alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ"); }
     } catch (error) { alert("เกิดข้อผิดพลาด: " + error.message); }
 }
 
-// 5. ดึงข้อมูลผู้ใช้ (อัปเกรดให้เสถียร)
+// 5. ดึงข้อมูลผู้ใช้มาแสดงผล
 async function loadUserData() {
     const userPhone = localStorage.getItem('userPhone');
     if (!userPhone) return;
+
     try {
         const userDoc = await db.collection("users").doc(userPhone).get();
         if (userDoc.exists) {
@@ -108,10 +129,10 @@ async function loadUserData() {
             setUI('pointsDisplay', data.points || 0);
             setUI('returnCountDisplay', data.returnCount || 0);
         }
-    } catch (e) { console.error("Load User Error:", e); }
+    } catch (error) { console.error("Load User Error:", error); }
 }
 
-// 6. ฟังก์ชันคืนกล่อง
+// 6. ฟังก์ชันคืนกล่อง (+5 แต้ม)
 async function returnBoxWithImage() {
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
@@ -125,8 +146,11 @@ async function returnBoxWithImage() {
         const imageUrl = await storageRef.getDownloadURL();
 
         const transData = {
-            boxId: boxId, userPhone: userPhone, type: 'return',
-            imageUrl: imageUrl, date: new Date().toLocaleString('th-TH'),
+            boxId: boxId,
+            userPhone: userPhone,
+            type: 'return',
+            imageUrl: imageUrl,
+            date: new Date().toLocaleString('th-TH'),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
         await db.collection("transactions").add(transData);
@@ -141,7 +165,7 @@ async function returnBoxWithImage() {
     } catch (error) { alert("เกิดข้อผิดพลาด"); }
 }
 
-// 7. ฟังก์ชันดึงประวัติจาก Firebase (ดีกว่าดึงจาก LocalStorage)
+// 7. ดึงประวัติจาก Firebase
 async function fetchHistoryFromFirebase(phone) {
     const container = document.getElementById('historyBox');
     if (!container) return;
@@ -174,12 +198,44 @@ async function fetchHistoryFromFirebase(phone) {
             </div>`;
         });
         container.innerHTML = html;
-    } catch (e) {
-        console.error("Fetch History Error:", e);
-        container.innerHTML = `<p>ไม่สามารถโหลดประวัติได้</p>`;
-    }
+    } catch (e) { console.error(e); }
 }
 
+// 8. ดึงข้อมูลอันดับคะแนน (Leaderboard)
+async function loadLeaderboard() {
+    const body = document.getElementById("leaderboardBody");
+    if (!body) return;
+
+    try {
+        const snapshot = await db.collection("users")
+            .orderBy("points", "desc")
+            .limit(50)
+            .get();
+
+        let html = "";
+        let rank = 1;
+
+        if (snapshot.empty) {
+            body.innerHTML = "<tr><td colspan='3' style='text-align:center;'>ยังไม่มีข้อมูล</td></tr>";
+            return;
+        }
+
+        snapshot.forEach((doc) => {
+            const user = doc.data();
+            const rowClass = rank === 1 ? 'rank-1' : '';
+            html += `
+                <tr class="${rowClass}">
+                    <td>${rank}</td>
+                    <td><b>${user.name || 'ไม่ทราบชื่อ'}</b><br><small>${user.phone}</small></td>
+                    <td style="text-align: right;"><span class="points-badge">${user.points || 0} แต้ม</span></td>
+                </tr>`;
+            rank++;
+        });
+        body.innerHTML = html;
+    } catch (error) { console.error(error); }
+}
+
+// 9. ออกจากระบบ
 function logout() {
     localStorage.clear();
     window.location.replace('login.html');
