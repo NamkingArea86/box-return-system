@@ -3,69 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ยืมกล่อง</title>
+    <title>ยืมกล่อง - ระบบคืนกล่อง</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 </head>
 <body>
     <div class="container">
         <h2>📥 ยืมกล่อง</h2>
         <div class="box">
-            <p>1. ระบุหมายเลขกล่อง:</p>
-            <input type="text" id="boxInput" placeholder="เช่น 001">
+            <p><strong>1. ระบุหมายเลขกล่อง:</strong></p>
+            <input type="text" id="boxInput" placeholder="เช่น 001" style="width:100%; padding:12px; margin-top:8px; border-radius:8px; border:1px solid #ddd; box-sizing:border-box;">
 
-            <p style="margin-top:15px;">2. เลือกสถานที่ยืม:</p>
-            <select id="shopSelect" style="width:100%; padding:10px; border-radius:8px;">
+            <p style="margin-top:20px;"><strong>2. เลือกสถานที่ยืม (ร้านค้า):</strong></p>
+            <select id="shopSelect" style="width:100%; padding:12px; margin-top:8px; border-radius:8px; border:1px solid #ddd;">
                 <option value="">-- กรุณาเลือกสถานที่ --</option>
                 <option value="ร้านกาแฟอาคาร A">ร้านกาแฟอาคาร A</option>
                 <option value="โรงอาหารกลาง">โรงอาหารกลาง</option>
                 <option value="ห้องสมุดชั้น 1">ห้องสมุดชั้น 1</option>
             </select>
 
-            <p style="margin-top:15px;">3. เลือกรูปภาพ:</p>
-            <input type="file" id="imageInput" accept="image/*" onchange="showPreview(event)">
-            <img id="previewImage" style="display:none; width:100%; margin-top:10px; border-radius:10px;">
-
-            <button onclick="borrowBackground()" style="margin-top:20px; width:100%; padding:15px; background:#4CAF50; color:white; border:none; border-radius:8px; font-weight:bold;">
+            <button onclick="borrowBox()" style="margin-top:30px; width:100%; padding:15px; background:#4CAF50; color:white; border:none; border-radius:8px; font-size:18px; font-weight:bold; cursor:pointer;">
                 ยืนยันการยืม
             </button>
         </div>
     </div>
 
     <div class="bottom-nav">
-        <a href="index.html" class="nav-item active">
-            <span class="nav-icon">🏠</span> หน้าหลัก
-        </a>
-        <a href="scan_borrow.html" class="nav-item">
-            <span class="nav-icon">📥</span> ยืม
-        </a>
-        <a href="scan_return.html" class="nav-item">
-            <span class="nav-icon">📤</span> คืน
-        </a>
-        <a href="history.html" class="nav-item">
-            <span class="nav-icon">📘</span> ประวัติ
-        </a>
-        <a href="rewards.html" class="nav-item">
-            <span class="nav-icon">🎁</span> รางวัล
-        </a>
+        <a href="index.html" class="nav-item">🏠 หน้าหลัก</a>
+        <a href="scan_borrow.html" class="nav-item active">📥 ยืม</a>
+        <a href="scan_return.html" class="nav-item">📤 คืน</a>
+        <a href="history.html" class="nav-item">📘 ประวัติ</a>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="js/app.js"></script>
-    <script>
-        function showPreview(event) {
-            const output = document.getElementById('previewImage');
-            if (event.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function() {
-                    output.src = reader.result;
-                    output.style.display = 'block';
-                };
-                reader.readAsDataURL(event.target.files[0]);
-            }
-        }
-    </script>
 </body>
 </html>
-
