@@ -9,6 +9,7 @@ const firebaseConfig = {
     measurementId: "G-8PX3LBXM3L"
 };
 
+// ตรวจสอบและเริ่มการเชื่อมต่อ (ต้องมีแค่ชุดเดียว)
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -256,6 +257,7 @@ async function loadUserData() {
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
 
 
 
