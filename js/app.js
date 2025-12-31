@@ -313,12 +313,11 @@ async function loadLeaderboard() {
 
 // ฟังก์ชันลบประวัติ (Admin Only) และหักแต้มคืนหากเป็นการคืนกล่อง
 async function deleteHistory(docId) {
-    if (!confirm("ยืนยันการลบรายการนี้? หากเป็นรายการ 'คืนกล่อง' แต้มของผู้ใช้จะถูกหักออก 5 แต้มด้วย")) {
+    if (!confirm("ยืนยันการลบรายการนี้?\n- หากเป็น 'คืนกล่อง': แต้มจะลด 5 แต้ม และสถิติคืนจะลดลง 1")) {
         return;
     }
 
     try {
-        // 1. ดึงข้อมูลรายการที่จะลบมาดูก่อนว่าคือรายการอะไร และของใคร
         const docRef = db.collection("transactions").doc(docId);
         const docSnap = await docRef.get();
 
@@ -329,27 +328,39 @@ async function deleteHistory(docId) {
 
         const data = docSnap.data();
         const userPhone = data.userPhone;
-        const type = data.type; // 'borrow' หรือ 'return'
+        const type = data.type; 
 
-        // 2. ถ้าเป็นรายการ 'คืน (return)' ต้องไปหักแต้มผู้ใช้ออก 5 แต้ม
+        // --- ส่วนที่ปรับปรุง: เช็คตัวตนผู้ใช้ก่อนหักแต้ม ---
         if (type === 'return') {
             const userRef = db.collection("users").doc(userPhone);
-            await userRef.update({
-                points: firebase.firestore.FieldValue.increment(-5),
-                returnCount: firebase.firestore.FieldValue.increment(-1)
-            });
-            console.log("หักแต้มคืนเรียบร้อย");
+            const userSnap = await userRef.get();
+
+            if (userSnap.exists) {
+                // ลดแต้ม 5 และ ลดจำนวนครั้งคืน 1
+                await userRef.update({
+                    points: firebase.firestore.FieldValue.increment(-5),
+                    returnCount: firebase.firestore.FieldValue.increment(-1)
+                });
+                console.log("หักแต้มและลดจำนวนครั้งสำเร็จสำหรับ:", userPhone);
+            } else {
+                console.warn("ไม่พบข้อมูลผู้ใช้รายนี้ในระบบ แต้มจึงไม่ถูกหัก");
+            }
         }
 
-        // 3. ลบรายการจาก transactions
+        // ลบรายการออกจากประวัติ
         await docRef.delete();
 
-        alert("ลบรายการและปรับปรุงแต้มสำเร็จ");
-        fetchAllHistory(); // รีโหลดรายการใหม่
+        alert("ลบรายการเรียบร้อยแล้ว");
+        
+        // ตรวจสอบว่ามีฟังก์ชันโหลดข้อมูลใหม่หรือไม่ก่อนเรียกใช้
+        if (typeof fetchAllHistory === 'function') {
+            fetchAllHistory();
+        } else {
+            location.reload(); // ถ้าไม่มีฟังก์ชันให้ Refresh หน้าแทน
+        }
 
     } catch (e) {
         console.error("Delete Error:", e);
         alert("เกิดข้อผิดพลาด: " + e.message);
     }
 }
-
