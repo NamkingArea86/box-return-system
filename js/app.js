@@ -190,7 +190,69 @@ async function loadUserData() {
         console.error("Error loading user data:", e);
     }
 }
+
+async function performRegister() {
+    // 1. ดึงค่าจากหน้าจอ
+    const name = document.getElementById('regName').value.trim();
+    const studentId = document.getElementById('regStudentId').value.trim();
+    const faculty = document.getElementById('regFaculty').value;
+    const year = document.getElementById('regYear').value;
+    const phone = document.getElementById('regPhone').value.trim();
+    const pass = document.getElementById('regPassword').value;
+    const confirmPass = document.getElementById('regConfirmPassword').value;
+
+    // 2. ตรวจสอบว่ากรอกครบไหม
+    if (!name || !studentId || !faculty || !year || !phone || !pass || !confirmPass) {
+        alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
+        return;
+    }
+
+    // 3. ตรวจสอบรหัสนักศึกษา (ต้อง 10 หลัก)
+    if (studentId.length !== 10) {
+        alert("รหัสนักศึกษาต้องมี 10 หลักเท่านั้น");
+        return;
+    }
+
+    // 4. ตรวจสอบรหัสผ่าน (อักษร+เลข ไม่เกิน 10 ตัว)
+    const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
+    if (!passRegex.test(pass)) {
+        alert("รหัสผ่านต้องมีทั้งตัวอักษรและตัวเลข และยาวไม่เกิน 10 ตัว");
+        return;
+    }
+
+    // 5. ตรวจสอบว่ารหัสผ่านตรงกันไหม
+    if (pass !== confirmPass) {
+        alert("รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง");
+        return;
+    }
+
+    try {
+        // 6. บันทึกลง Firebase (ใช้เบอร์โทรเป็น ID ของ Document)
+        await db.collection("users").doc(phone).set({
+            name: name,
+            studentId: studentId,
+            faculty: faculty,
+            year: year,
+            phone: phone,
+            password: pass,
+            points: 0,
+            returnCount: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 7. เก็บเบอร์ลงเครื่องและไปหน้าหลัก
+        localStorage.setItem('userPhone', phone);
+        alert("ลงทะเบียนสำเร็จ! ยินดีต้อนรับครับ");
+        window.location.replace('index.html');
+
+    } catch (error) {
+        console.error("Register Error:", error);
+        alert("เกิดข้อผิดพลาด: " + error.message);
+    }
+}
+
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
 
 
 
