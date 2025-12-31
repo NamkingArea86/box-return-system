@@ -1,73 +1,47 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-
-    <script src="js/app.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สแกนคืนกล่อง</title>
-    <script src="js/app.js"></script>
+    <title>คืนกล่อง - ระบบคืนกล่อง</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
-    <h2>📤 คืนกล่อง</h2>
+    <div class="container">
+        <h2>📤 คืนกล่อง</h2>
+        <div class="box">
+            <p><strong>1. ใส่หมายเลขกล่องที่ต้องการคืน:</strong></p>
+            <input type="text" id="boxInputReturn" placeholder="เช่น 001" style="width:100%; padding:12px; margin-top:8px; border-radius:8px; border:1px solid #ddd; box-sizing:border-box;">
 
-    <div class="box">
-        <p>1. ใส่หมายเลขกล่อง:</p>
-        <input type="text" id="boxInputReturn" placeholder="เช่น 001">
-
-        <p>2. ถ่ายรูปจุดที่คืนกล่อง:</p>
-
-        <div class="upload-btn-wrapper">
-            <div class="btn-upload">
-                <span style="font-size:25px;">📸</span>
-                <span>กดเพื่อเลือกรูป</span>
-                <input type="file" id="imageInputReturn" accept="image/*" capture="environment" onchange="showPreview(event)">
-            </div>
+            <p style="margin-top:20px;"><strong>2. สแกน QR Code ที่จุดคืนกล่อง:</strong></p>
+            <div id="reader" style="width: 100%; border-radius: 10px; overflow: hidden; margin-top:10px; border: 1px solid #ccc;"></div>
+            <p style="font-size:12px; color:#666; text-align:center; margin-top:10px;">*กรุณาใส่เลขกล่องก่อนสแกน*</p>
         </div>
-
-        <img id="previewImage" alt="ตัวอย่างรูปภาพ">
-
-        <button onclick="returnBoxWithImage()">ยืนยันการคืน</button>
     </div>
 
     <div class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <span class="nav-icon">🏠</span> หน้าหลัก
-        </a>
-        <a href="scan_borrow.html" class="nav-item">
-            <span class="nav-icon">📥</span> ยืม
-        </a>
-        <a href="scan_return.html" class="nav-item active">
-            <span class="nav-icon">📤</span> คืน
-        </a>
-        <a href="history.html" class="nav-item">
-            <span class="nav-icon">📘</span> ประวัติ
-        </a>
-        <a href="rewards.html" class="nav-item">
-            <span class="nav-icon">🎁</span> รางวัล
-        </a>
+        <a href="index.html" class="nav-item">🏠 หน้าหลัก</a>
+        <a href="scan_borrow.html" class="nav-item">📥 ยืม</a>
+        <a href="scan_return.html" class="nav-item active">📤 คืน</a>
+        <a href="history.html" class="nav-item">📘 ประวัติ</a>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/app.js"></script>
     <script>
-        function showPreview(event) {
-            var reader = new FileReader();
-            reader.onload = function(){
-                var output = document.getElementById('previewImage');
-                output.src = reader.result;
-                output.style.display = 'block';
-            };
-            if(event.target.files[0]){
-                reader.readAsDataURL(event.target.files[0]);
-            }
-        }
+        const html5QrCode = new Html5Qrcode("reader");
+        const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start({ facingMode: "environment" }, qrConfig, (decodedText) => {
+            html5QrCode.stop(); 
+            returnBoxWithQR(decodedText);
+        }).catch(err => {
+            console.error("กล้องทำงานผิดพลาด", err);
+        });
     </script>
-
 </body>
-
 </html>
 
 
