@@ -17,25 +17,52 @@ const storage = firebase.storage();
 
 // 2. ฟังก์ชันตรวจสอบสิทธิ์เมื่อโหลดหน้าจอ
 window.onload = function() {
-    const userPhone = localStorage.getItem('userPhone');
-    const path = window.location.pathname.toLowerCase();
+            // --- ส่วนเดิมของคุณ ---
+            const historyData = JSON.parse(localStorage.getItem('borrowHistory')) || [];
+            const container = document.getElementById('historyBox');
 
-    const isLoginPage = path.includes('login.html');
-    const isRegisterPage = path.includes('register.html');
-    const isAdminPage = path.includes('admin');
+            // --- เพิ่มส่วนนี้: ดึงจำนวนครั้งจาก LocalStorage มาโชว์ ---
+            const count = localStorage.getItem('returnCount') || '0';
+            if (document.getElementById('returnCountDisplay')) {
+                document.getElementById('returnCountDisplay').innerText = count;
+            }
 
-    if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
-        window.location.replace('login.html');
-        return;
-    }
-    
-    if (userPhone && (isLoginPage || isRegisterPage)) {
-        window.location.replace('index.html');
-        return;
-    }
-
-    if (userPhone) loadUserData();
-};
+            // --- Logic แสดงรายการประวัติเดิมของคุณ ---
+            if (historyData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span class="empty-icon">📭</span>
+                        <h3>คุณยังไม่เคยยืมกล่องกับเรา</h3>
+                        <p style="font-size:14px;">เริ่มยืมครั้งแรกได้ที่เมนู "ยืม"</p>
+                        <button onclick="location.href='scan_borrow.html'" style="width:auto; margin-top:10px; font-size:14px;">
+                            ไปที่หน้ายืม
+                        </button>
+                    </div>
+                `;
+            } else {
+                let html = '';
+                historyData.slice().reverse().forEach(item => {
+                    let statusColor = item.type === 'borrow' ? '#e8f5e9' : '#fff3e0';
+                    let icon = item.type === 'borrow' ? '📥' : '📤';
+                    let text = item.type === 'borrow' ? 'ยืมกล่อง' : 'คืนกล่อง';
+                    
+                    html += `
+                    <div class="history-item" style="border-left: 5px solid ${item.type === 'borrow' ? '#4CAF50' : '#FF9800'};">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>${icon} ${text}</strong>
+                            <small style="color:#888;">${item.date || 'ไม่ระบุวันที่'}</small>
+                        </div>
+                        <div style="margin-top:5px; font-size:14px;">
+                            หมายเลข: <b>${item.boxId}</b>
+                        </div>
+                    </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+            
+            if(typeof loadUserData === 'function') loadUserData();
+        };
 
 // 3. ฟังก์ชันลงทะเบียน (เพิ่มเงื่อนไข Password และ ReturnCount)
 async function performRegister() {
@@ -175,5 +202,6 @@ function logout() {
     localStorage.clear();
     window.location.replace('login.html');
 }
+
 
 
