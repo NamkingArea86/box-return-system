@@ -62,14 +62,15 @@ async function initLIFF() {
             // ตรวจสอบใน Firebase ทันที
             const userDoc = await db.collection("users").doc(lineUserId).get();
             
+            // ในส่วนของ initLIFF ตรงที่เช็ค userDoc.exists
             if (userDoc.exists) {
-                // ✅ เป็นสมาชิกอยู่แล้ว: เก็บข้อมูลเข้าเครื่อง
-                const userData = userDoc.data();
-                localStorage.setItem('userPhone', lineUserId);
-                localStorage.setItem('realPhone', userData.phone);
-                localStorage.setItem('userName', userData.name);
-                localStorage.setItem('userPoints', userData.points || 0);
-            } else {
+              const userData = userDoc.data();
+              localStorage.setItem('userPhone', lineUserId);
+              localStorage.setItem('userName', userData.name);
+              localStorage.setItem('userPoints', userData.points || 0);
+              // ✅ บรรทัดนี้สำคัญมาก ต้องดึงค่า phone จาก Firebase มาเก็บไว้โชว์
+              localStorage.setItem('realPhone', userData.phone || 'ไม่มีเบอร์'); 
+} else {
                 // ❌ ไม่พบในฐานข้อมูล: ล้างค่าเก่า และเตรียมข้อมูลไปหน้าสมัคร
                 localStorage.removeItem('userPhone');
                 localStorage.setItem('tempLineName', profile.displayName);
@@ -123,16 +124,20 @@ async function performRegister() {
     }
 }
 
-// 5. แสดงผลข้อมูลผู้ใช้
 function loadUserData() {
     const name = localStorage.getItem('userName') || 'ผู้ใช้งาน';
-    const displayPhone = localStorage.getItem('realPhone') || '...';
+    // ✅ ดึงค่า realPhone มาแสดง (ถ้าไม่มีให้โชว์ขีดกลาง)
+    const displayPhone = localStorage.getItem('realPhone') || '-'; 
     const points = localStorage.getItem('userPoints') || '0';
 
     if (document.getElementById('username')) document.getElementById('username').innerText = name;
-    if (document.getElementById('userphone')) document.getElementById('userphone').innerText = displayPhone;
+    
+    // ✅ เช็คว่า ID ใน HTML ของคุณชื่อ 'userphone' หรือเปล่า (ตัวเล็กทั้งหมด)
+    if (document.getElementById('userphone')) {
+        document.getElementById('userphone').innerText = displayPhone;
+    }
+    
     if (document.getElementById('points')) document.getElementById('points').innerText = points;
-    if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = points;
 }
 
 // 6. ฟังก์ชันคืนกล่อง
@@ -174,6 +179,7 @@ function logout() {
     localStorage.clear();
     window.location.replace('register.html');
 }
+
 
 
 
