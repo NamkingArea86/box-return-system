@@ -35,7 +35,7 @@ window.onload = async function() {
     }
 };
 
-// --- ฟังก์ชันการยืม (ที่ทำให้ปุ่มในหน้ายืมของคุณทำงานได้) ---
+// ฟังก์ชันยืมกล่องแบบ "ย่อรูปภาพ" เพื่อความรวดเร็ว
 async function borrowBoxWithImage() {
     const boxId = document.getElementById('boxInput').value;
     const imageInput = document.getElementById('imageInput');
@@ -50,11 +50,15 @@ async function borrowBoxWithImage() {
 
     try {
         btnSubmit.disabled = true;
-        btnSubmit.innerText = "กำลังบันทึก...";
+        btnSubmit.innerText = "กำลังย่อรูปและบันทึก...";
 
-        // 1. อัปโหลดรูป
+        // --- เริ่มขั้นตอนการย่อรูปภาพ ---
+        const compressedFile = await compressImage(imageFile);
+        // -----------------------------
+
+        // 1. อัปโหลดรูปที่ย่อแล้ว (ไฟล์จะเหลือแค่หลัก KB ทำให้ไวมาก)
         const storageRef = storage.ref(`borrows/${Date.now()}_${boxId}.jpg`);
-        await storageRef.put(imageFile);
+        await storageRef.put(compressedFile);
         const imageUrl = await storageRef.getDownloadURL();
 
         // 2. บันทึกข้อมูล
@@ -74,6 +78,32 @@ async function borrowBoxWithImage() {
         btnSubmit.disabled = false;
         btnSubmit.innerText = "ยืนยันการยืม";
     }
+}
+
+// ฟังก์ชันเสริมสำหรับย่อขนาดรูปภาพ (ใส่ไว้ล่างสุดของ app.js)
+function compressImage(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800; // ตั้งค่าความกว้างสูงสุดแค่ 800px (พอชัดสำหรับดูหลักฐาน)
+                const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scaleSize;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/jpeg', 0.7); // คุณภาพรูป 70% (ลดขนาดไฟล์ได้เยอะมาก)
+            };
+        };
+    });
 }
 
 // --- ฟังก์ชันการคืน (บวกแต้ม +5) ---
@@ -184,3 +214,4 @@ async function fetchHistoryFromFirebase(phone) {
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
