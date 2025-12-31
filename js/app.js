@@ -310,3 +310,46 @@ async function loadLeaderboard() {
         tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center; color:red; padding:20px;'>เกิดข้อผิดพลาด: " + e.message + "</td></tr>";
     }
 }
+
+// ฟังก์ชันลบประวัติ (Admin Only) และหักแต้มคืนหากเป็นการคืนกล่อง
+async function deleteHistory(docId) {
+    if (!confirm("ยืนยันการลบรายการนี้? หากเป็นรายการ 'คืนกล่อง' แต้มของผู้ใช้จะถูกหักออก 5 แต้มด้วย")) {
+        return;
+    }
+
+    try {
+        // 1. ดึงข้อมูลรายการที่จะลบมาดูก่อนว่าคือรายการอะไร และของใคร
+        const docRef = db.collection("transactions").doc(docId);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            alert("ไม่พบข้อมูลรายการนี้");
+            return;
+        }
+
+        const data = docSnap.data();
+        const userPhone = data.userPhone;
+        const type = data.type; // 'borrow' หรือ 'return'
+
+        // 2. ถ้าเป็นรายการ 'คืน (return)' ต้องไปหักแต้มผู้ใช้ออก 5 แต้ม
+        if (type === 'return') {
+            const userRef = db.collection("users").doc(userPhone);
+            await userRef.update({
+                points: firebase.firestore.FieldValue.increment(-5),
+                returnCount: firebase.firestore.FieldValue.increment(-1)
+            });
+            console.log("หักแต้มคืนเรียบร้อย");
+        }
+
+        // 3. ลบรายการจาก transactions
+        await docRef.delete();
+
+        alert("ลบรายการและปรับปรุงแต้มสำเร็จ");
+        fetchAllHistory(); // รีโหลดรายการใหม่
+
+    } catch (e) {
+        console.error("Delete Error:", e);
+        alert("เกิดข้อผิดพลาด: " + e.message);
+    }
+}
+
