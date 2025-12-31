@@ -36,15 +36,20 @@
         }
         .delete-btn {
             position: absolute;
+            top: 15px; /* ย้ายไปไว้มุมขวาบนแทน */
             right: 15px;
-            bottom: 15px;
-            background: #ffebee;
-            color: #c62828;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
+            background: #fff5f5;
+            color: #e53935;
+            border: 1px solid #ffcdd2;
+            padding: 6px 12px;
+            border-radius: 8px;
             font-size: 12px;
             cursor: pointer;
+            transition: 0.2s;
+        }
+        .delete-btn:hover {
+            background: #e53935;
+            color: white;
         }
     </style>
 </head>
@@ -137,3 +142,4 @@
     </script>
 </body>
 </html>
+
