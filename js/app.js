@@ -1,4 +1,6 @@
-// 1. ตั้งค่า Firebase (คงเดิม)
+// ==========================================
+// 1. การตั้งค่าระบบ (Configuration)
+// ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyDRYTht-6h5QDqFTGO6sr44TfuvDfApAPc",
     authDomain: "box-return-system.firebaseapp.com",
@@ -9,17 +11,20 @@ const firebaseConfig = {
     measurementId: "G-8PX3LBXM3L"
 };
 
-// ตรวจสอบและเริ่มการเชื่อมต่อ (ต้องมีแค่ชุดเดียว)
+// เริ่มต้นการเชื่อมต่อ Firebase (ตรวจสอบก่อนเพื่อไม่ให้ประกาศซ้ำ)
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.firestore();
 
-// 2. จัดการเมื่อโหลดหน้าจอ
+// ==========================================
+// 2. ระบบจัดการหน้าจอ (Window Load)
+// ==========================================
 window.onload = async function() {
     const userPhone = localStorage.getItem('userPhone');
     const path = window.location.pathname.toLowerCase();
     
+    // ตรวจสอบการเข้าสู่ระบบ
     if (!userPhone && !path.includes('login.html') && !path.includes('register.html')) {
         window.location.replace('login.html');
         return;
@@ -33,6 +38,11 @@ window.onload = async function() {
     }
 };
 
+// ==========================================
+// 3. ฟังก์ชันหลักของระบบ (Main Functions)
+// ==========================================
+
+// --- เข้าสู่ระบบ ---
 async function performLogin() {
     const phone = document.getElementById('loginPhone').value.trim();
     const pass = document.getElementById('loginPassword').value;
@@ -55,18 +65,14 @@ async function performLogin() {
         } else {
             alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ");
         }
-    } catch (e) {
-        alert("Error: " + e.message);
-    }
+    } catch (e) { alert("Error: " + e.message); }
 }
 
-// 3. ฟังก์ชันลงทะเบียน (แก้ไขจุดที่ทำให้กดไม่ได้)
+// --- ลงทะเบียนใหม่ ---
 async function performRegister() {
     try {
-        // ดักจับ Element ให้ชัวร์ก่อนดึงค่า .value
         const getVal = (id) => {
             const el = document.getElementById(id);
-            if (!el) console.error("ไม่พบ Element ID:", id);
             return el ? el.value.trim() : "";
         };
 
@@ -75,58 +81,43 @@ async function performRegister() {
         const faculty = getVal('regFaculty');
         const year = getVal('regYear');
         const phone = getVal('regPhone');
-        const pass = document.getElementById('regPassword').value; // ไม่ trim รหัสผ่าน
+        const pass = document.getElementById('regPassword').value;
         const confirmPass = document.getElementById('regConfirmPassword').value;
 
-        // 1. ตรวจสอบว่ากรอกครบไหม
         if (!name || !studentId || !faculty || !year || !phone || !pass || !confirmPass) {
             alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
             return;
         }
 
-        // 2. ตรวจสอบรหัสนักศึกษา (10 หลัก)
         if (studentId.length !== 10) {
             alert("รหัสนักศึกษาต้องมี 10 หลักเท่านั้น");
             return;
         }
 
-        // 3. ตรวจสอบรหัสผ่าน (REGEX)
         const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
         if (!passRegex.test(pass)) {
             alert("รหัสผ่านต้องมีทั้งภาษาอังกฤษและตัวเลข (ไม่เกิน 10 หลัก)");
             return;
         }
 
-        // 4. ตรวจสอบว่ารหัสผ่านตรงกันไหม
         if (pass !== confirmPass) {
             alert("รหัสผ่านไม่ตรงกัน");
             return;
         }
 
-        // 5. บันทึกลง Firebase
         await db.collection("users").doc(phone).set({
-            name: name,
-            studentId: studentId,
-            faculty: faculty,
-            year: year,
-            phone: phone,
-            password: pass,
-            points: 0,
-            returnCount: 0,
+            name, studentId, faculty, year, phone,
+            password: pass, points: 0, returnCount: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         localStorage.setItem('userPhone', phone);
         alert("ลงทะเบียนสำเร็จ!");
         window.location.replace('index.html');
-
-    } catch (error) {
-        console.error("Register Error:", error);
-        alert("เกิดข้อผิดพลาด: " + error.message);
-    }
+    } catch (error) { alert("เกิดข้อผิดพลาด: " + error.message); }
 }
 
-// 4. ฟังก์ชันยืมกล่อง (คงเดิม)
+// --- ยืมกล่อง ---
 async function borrowBox() {
     const boxId = document.getElementById('boxInput').value;
     const shopName = document.getElementById('shopSelect').value;
@@ -151,7 +142,7 @@ async function borrowBox() {
     } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
 }
 
-// 5. ฟังก์ชันคืนกล่อง (คงเดิม)
+// --- คืนกล่องแบบสแกน QR ---
 async function returnBoxWithQR(scannedText) {
     const boxId = document.getElementById('boxInputReturn').value;
     const userPhone = localStorage.getItem('userPhone');
@@ -187,11 +178,10 @@ async function returnBoxWithQR(scannedText) {
 
         alert("คืนสำเร็จที่: " + cleanLocation + "\nได้รับ 5 แต้ม!");
         window.location.replace('history.html');
-
     } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
 }
 
-// 6. ฟังก์ชันดึงประวัติ (คงเดิม)
+// --- ดึงประวัติรายการ ---
 async function fetchHistoryFromFirebase(phone) {
     const container = document.getElementById('historyBox');
     if (!container) return;
@@ -209,6 +199,7 @@ async function fetchHistoryFromFirebase(phone) {
 
         const docs = [];
         snapshot.forEach(doc => docs.push(doc.data()));
+        // เรียงลำดับจากใหม่ไปเก่า
         docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
         docs.forEach(item => {
@@ -232,7 +223,7 @@ async function fetchHistoryFromFirebase(phone) {
     } catch (e) { console.error("Error:", e); }
 }
 
-// 7. โหลดข้อมูลผู้ใช้ (คงเดิม)
+// --- โหลดข้อมูลผู้ใช้ ---
 async function loadUserData() {
     const userPhone = localStorage.getItem('userPhone');
     if(!userPhone) return;
@@ -256,10 +247,8 @@ async function loadUserData() {
     } catch (e) { console.error(e); }
 }
 
-function logout() { localStorage.clear(); window.location.replace('login.html'); }
-
-
-
-
-
-
+// --- ออกจากระบบ ---
+function logout() { 
+    localStorage.clear(); 
+    window.location.replace('login.html'); 
+}
