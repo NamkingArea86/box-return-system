@@ -51,19 +51,15 @@
     <script src="js/app.js"></script>
 
     <script>
-        // ไม่ต้องประกาศ firebaseConfig ซ้ำ
-        // รอให้หน้าจอโหลดเสร็จ แล้วสั่งรันฟังก์ชันจาก app.js
-        window.onload = function() {
+        // ✅ ไม่ต้องประกาศ firebaseConfig ซ้ำที่นี่เด็ดขาด!
+        // รอให้ทุกอย่างโหลดเสร็จแล้วสั่งรันฟังก์ชัน Leaderboard
+        window.addEventListener('load', function() {
             if (typeof loadLeaderboard === 'function') {
                 loadLeaderboard();
             } else {
-                console.error("ไม่พบฟังก์ชัน loadLeaderboard ใน app.js");
+                console.error("Error: ไม่พบฟังก์ชัน loadLeaderboard ใน app.js");
             }
-        };
+        });
     </script>
 </body>
 </html>
-
-
-
-
