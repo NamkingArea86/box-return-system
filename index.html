@@ -1,18 +1,13 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-
-    <script src="js/app.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>หน้าหลัก - ระบบยืมคืน</title>
-    
     <link rel="stylesheet" href="style.css">
-    
-    <script src="js/app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 </head>
 <body>
 
@@ -22,6 +17,8 @@
         <h3>👤 ข้อมูลของฉัน</h3>
         <p><strong>ชื่อ:</strong> <span id="username">กำลังโหลด...</span></p>
         <p><strong>เบอร์โทร:</strong> <span id="userphone">...</span></p>
+        <p><strong>คณะ:</strong> <span id="userfaculty">...</span></p>
+        <p><strong>ชั้นปี:</strong> <span id="useryear">...</span></p>
         
         <div style="background:#f9fbe7; padding:15px; border-radius:10px; text-align:center; border:1px dashed #cddc39; margin-top:15px;">
             <span style="font-size:14px; color:#555;">คะแนนสะสม</span><br>
@@ -29,32 +26,18 @@
         </div>
     </div>
 
-    <button class="logout" onclick="logout()">ออกจากระบบ</button>
+    <button class="logout" onclick="logout()" style="width:90%; margin:20px 5%;">ออกจากระบบ</button>
 
-    <br><br><br> 
-    
     <div class="bottom-nav">
-        <a href="index.html" class="nav-item active">
-            <span class="nav-icon">🏠</span> หน้าหลัก
-        </a>
-        <a href="scan_borrow.html" class="nav-item">
-            <span class="nav-icon">📥</span> ยืม
-        </a>
-        <a href="scan_return.html" class="nav-item">
-            <span class="nav-icon">📤</span> คืน
-        </a>
-        <a href="history.html" class="nav-item">
-            <span class="nav-icon">📘</span> ประวัติ
-        </a>
-        <a href="rewards.html" class="nav-item">
-            <span class="nav-icon">🎁</span> รางวัล
-        </a>
+        <a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span> หน้าหลัก</a>
+        <a href="scan_borrow.html" class="nav-item"><span class="nav-icon">📥</span> ยืม</a>
+        <a href="scan_return.html" class="nav-item"><span class="nav-icon)📤</span> คืน</a>
+        <a href="history.html" class="nav-item"><span class="nav-icon">📘</span> ประวัติ</a>
+        <a href="rewards.html" class="nav-item"><span class="nav-icon">🎁</span> รางวัล</a>
     </div>
 
+    <script src="js/app.js"></script>
 </body>
-
 </html>
-
-
 
 
