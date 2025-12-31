@@ -95,35 +95,49 @@ async function fetchHistoryFromFirebase(phone) {
     if (!container) return;
 
     try {
+        console.log("เริ่มดึงข้อมูลสำหรับเบอร์:", phone);
+
+        // ดึงข้อมูลโดย "ไม่ใช้" orderBy เพื่อเลี่ยงปัญหา Index ซ้ำซ้อนหรือพัง
         const snapshot = await db.collection("transactions")
             .where("userPhone", "==", phone)
-            .orderBy("timestamp", "desc")
             .get();
 
         let html = "";
+        
         if (snapshot.empty) {
-            container.innerHTML = "<p style='text-align:center; padding:20px; color:#888;'>ยังไม่มีประวัติการทำรายการ</p>";
+            container.innerHTML = "<p style='text-align:center; padding:20px; color:#888;'>ไม่พบข้อมูลประวัติในระบบ</p>";
             return;
         }
 
-        snapshot.forEach(doc => {
-            const item = doc.data();
-            const color = item.type === 'borrow' ? '#4CAF50' : '#FF9800';
-            const typeLabel = item.type === 'borrow' ? '📥 ยืมกล่อง' : '📤 คืนกล่อง';
-            
+        // นำข้อมูลมาเรียงลำดับด้วย JavaScript แทน (แก้ปัญหา Index ไม่ทำงาน)
+        const docs = [];
+        snapshot.forEach(doc => docs.push(doc.data()));
+        docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+        docs.forEach(item => {
+            const isBorrow = item.type === 'borrow';
+            const color = isBorrow ? '#4CAF50' : '#FF9800';
+            const location = item.shopName || item.shopId || "ไม่ระบุสถานที่";
+
             html += `
-                <div style="border-left:5px solid ${color}; background:#fff; padding:15px; margin:10px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+                <div class="history-item" style="border-left: 5px solid ${color}; background:#fff; padding:15px; margin:10px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
                     <div style="display:flex; justify-content:space-between;">
-                        <b style="color:${color}">${typeLabel}</b>
-                        <small style="color:#888">${item.date || ''}</small>
+                        <strong style="color:${color};">${isBorrow ? '📥 ยืมกล่อง' : '📤 คืนกล่อง'}</strong>
+                        <small style="color:#888;">${item.date || ''}</small>
                     </div>
-                    <p style="margin:5px 0; font-size:14px;">เลขกล่อง: ${item.boxId} | ร้าน: ${item.shopName || 'ไม่ระบุ'}</p>
+                    <div style="margin-top:8px; font-size:14px;">
+                        เลขกล่อง: <b>${item.boxId || '-'}</b><br>
+                        สถานที่: ${location}
+                    </div>
                 </div>`;
         });
+        
         container.innerHTML = html;
+        console.log("โหลดข้อมูลสำเร็จ!");
+
     } catch (e) {
-        console.error(e);
-        container.innerHTML = "<p style='text-align:center; color:red;'>เกิดข้อผิดพลาดในการโหลดข้อมูล (อาจต้องสร้าง Index ใน Firebase)</p>";
+        console.error("Error:", e);
+        container.innerHTML = "<p style='color:red;'>ข้อผิดพลาด: " + e.message + "</p>";
     }
 }
 
@@ -145,3 +159,4 @@ async function loadUserData() {
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
