@@ -120,14 +120,45 @@
 
         // ฟังก์ชันลบประวัติ (Admin Only)
         async function deleteHistory(id) {
-            if (confirm("ยืนยันการลบรายการนี้? (ไม่สามารถกู้คืนได้)")) {
-                try {
-                    await db.collection("transactions").doc(id).delete();
-                    alert("ลบรายการสำเร็จ");
-                    fetchAllHistory(); // โหลดข้อมูลใหม่
-                } catch (e) {
-                    alert("ลบไม่สำเร็จ: " + e.message);
+            if (!confirm("⚠️ ยืนยันการลบ? \nหากเป็นรายการ 'คืนกล่อง' แต้มจะถูกหักออก 5 แต้ม และจำนวนครั้งจะลดลงทันที")) {
+                return;
+            }
+
+            try {
+                // 1. ดึงข้อมูลรายการที่จะลบมาเช็คก่อนว่าเป็นของใคร และเป็นประเภทไหน
+                const docRef = db.collection("transactions").doc(id);
+                const docSnap = await docRef.get();
+
+                if (!docSnap.exists) {
+                    alert("ไม่พบข้อมูลรายการนี้");
+                    return;
                 }
+
+                const data = docSnap.data();
+                const userPhone = data.userPhone;
+                const type = data.type; // 'borrow' หรือ 'return'
+
+                // 2. ถ้าเป็นรายการ 'คืน (return)' ต้องหักแต้มคืน 5 แต้ม และลดจำนวนครั้งคืนลง 1
+                if (type === 'return') {
+                    const userRef = db.collection("users").doc(userPhone);
+                
+                    // ใช้ FieldValue.increment(-ค่า) เพื่อหักลบจำนวน
+                    await userRef.update({
+                        points: firebase.firestore.FieldValue.increment(-5),
+                        returnCount: firebase.firestore.FieldValue.increment(-1)
+                    });
+                console.log("หักแต้มและจำนวนครั้งคืนสำเร็จ");
+                }
+    
+                // 3. ลบรายการประวัติออกจาก transactions
+                await docRef.delete();
+
+                alert("ลบรายการและปรับปรุงคะแนนผู้ใช้สำเร็จ");
+                fetchAllHistory(); // รีโหลดหน้าจอใหม่
+    
+            } catch (e) {
+                console.error("Delete Error:", e);
+                alert("ลบไม่สำเร็จ: " + e.message);
             }
         }
 
@@ -142,4 +173,5 @@
     </script>
 </body>
 </html>
+
 
