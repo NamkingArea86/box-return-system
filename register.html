@@ -9,8 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ลงทะเบียน - ระบบยืมคืน</title>
     <link rel="stylesheet" href="style.css">
-    
-    </head>
+</head>
 <body class="login-page">
 
     <div class="login-container">
@@ -23,40 +22,60 @@
             <input type="text" id="regName" placeholder="เช่น สมชาย ใจดี">
             
             <label>คณะ / สาขาวิชา</label>
-            <select id="regFaculty" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd;">
+            <select id="regFaculty" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit;">
                 <option value="">-- เลือกคณะ --</option>
-                <option value="วิศวกรรมศาสตร์">วิศวกรรมศาสตร์</option>
-                <option value="บริหารธุรกิจ">บริหารธุรกิจ</option>
-                <option value="วิทยาศาสตร์">วิทยาศาสตร์</option>
-                <option value="ศิลปศาสตร์">ศิลปศาสตร์</option>
+                <option value="คณะอักษรศาสตร์">คณะอักษรศาสตร์</option>
+                <option value="คณะศิลปกรรมศาสตร์">คณะศิลปกรรมศาสตร์</option>
+                <option value="คณะสถาปัตยกรรมศาสตร์">คณะสถาปัตยกรรมศาสตร์</option>
+                <option value="คณะวิศวกรรมศาสตร์">คณะวิศวกรรมศาสตร์</option>
+                <option value="คณะรัฐศาสตร์">คณะรัฐศาสตร์</option>
+                <option value="คณะวิทยาศาสตร์">คณะวิทยาศาสตร์</option>
+                <option value="คณะพาณิชยศาสตร์และการบัญชี">คณะพาณิชยศาสตร์และการบัญชี</option>
+                <option value="คณะเศรษฐศาสตร์">คณะเศรษฐศาสตร์</option>
+                <option value="คณะนิเทศศาสตร์">คณะนิเทศศาสตร์</option>
+                <option value="คณะนิติศาสตร์">คณะนิติศาสตร์</option>
+                <option value="คณะครุศาสตร์">คณะครุศาสตร์</option>
+                <option value="คณะจิตวิทยา">คณะจิตวิทยา</option>
+                <option value="คณะพยาบาลศาสตร์">คณะพยาบาลศาสตร์</option>
+                <option value="คณะวิทยาศาสตร์การกีฬา">คณะวิทยาศาสตร์การกีฬา</option>
+                <option value="คณะสหเวชศาสตร์">คณะสหเวชศาสตร์</option>
+                <option value="คณะเภสัชศาสตร์">คณะเภสัชศาสตร์</option>
+                <option value="คณะทันตแพทยศาสตร์">คณะทันตแพทยศาสตร์</option>
+                <option value="คณะสัตวแพทยศาสตร์">คณะสัตวแพทยศาสตร์</option>
+                <option value="คณะแพทยศาสตร์">คณะแพทยศาสตร์</option>
+                <option value="สถาบันนวัตกรรมบูรณาการ">สถาบันนวัตกรรมบูรณาการแห่งจุฬาฯ</option>
+                <option value="สำนักวิชาทรัพยากรเกษตร">สำนักวิชาทรัพยากรเกษตร</option>
             </select>
             
             <label>ชั้นปีที่เรียน</label>
-            <select id="regYear" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd;">
+            <select id="regYear" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit;">
                 <option value="">-- เลือกชั้นปี --</option>
                 <option value="ปี 1">ปี 1</option>
                 <option value="ปี 2">ปี 2</option>
                 <option value="ปี 3">ปี 3</option>
                 <option value="ปี 4">ปี 4</option>
+                <option value="ปี 5">ปี 5</option>
+                <option value="ปี 6">ปี 6</option>
                 <option value="อื่นๆ">อื่นๆ (เช่น ปริญญาโท/เอก)</option>
             </select>
+
             <label>เบอร์โทรศัพท์ (ใช้เป็นชื่อเข้าสู่ระบบ)</label>
             <div class="input-icon-wrapper">
                 <span class="input-icon">📞</span>
                 <input type="tel" id="regPhone" placeholder="0xx-xxx-xxxx" maxlength="10">
             </div>
 
-            <label>กำหนดรหัสผ่าน</label>
+            <label>กำหนดรหัสผ่าน (อักษร+เลข ไม่เกิน 10 ตัว)</label>
             <input type="password" id="regPassword" placeholder="ตั้งรหัสผ่านของคุณ">
             
             <label>ยืนยันรหัสผ่าน</label>
             <input type="password" id="regConfirmPassword" placeholder="กรอกรหัสผ่านอีกครั้ง">
         </div>
 
-        <button onclick="performRegister()" style="margin-top: 15px; background: #FF9800;">ลงทะเบียน</button>
+        <button onclick="performRegister()" style="margin-top: 15px; background: #FF9800; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold;">ลงทะเบียน</button>
         
         <div style="margin-top: 20px;">
-            <a href="login.html" style="color:#2E7D32; text-decoration:none;">มีบัญชีอยู่แล้ว? เข้าสู่ระบบ</a>
+            <a href="login.html" style="color:#2E7D32; text-decoration:none; font-size: 14px;">มีบัญชีอยู่แล้ว? เข้าสู่ระบบ</a>
         </div>
     </div>
 
@@ -64,8 +83,3 @@
 
 </body>
 </html>
-
-
-
-
-
