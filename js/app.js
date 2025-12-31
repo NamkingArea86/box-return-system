@@ -24,13 +24,11 @@ window.onload = function() {
     const isRegisterPage = path.includes('register.html');
     const isAdminPage = path.includes('admin');
 
-    // ถ้าไม่ได้ล็อกอิน และไม่ใช่หน้าสาธารณะ -> ไปหน้า Login
     if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
         window.location.replace('login.html');
         return;
     }
     
-    // ถ้าล็อกอินแล้ว ห้ามเข้าหน้า Login/Register
     if (userPhone && (isLoginPage || isRegisterPage)) {
         window.location.replace('index.html');
         return;
@@ -39,39 +37,46 @@ window.onload = function() {
     if (userPhone) loadUserData();
 };
 
-// 3. ฟังก์ชันลงทะเบียน (ใช้เบอร์โทรเป็น ID)
+// 3. ฟังก์ชันลงทะเบียน (เพิ่มเงื่อนไข Password และ ReturnCount)
 async function performRegister() {
     const name = document.getElementById('regName').value;
-    const faculty = document.getElementById('regFaculty').value; // ดึงคณะ
-    const year = document.getElementById('regYear').value;       // ดึงชั้นปี
+    const faculty = document.getElementById('regFaculty').value;
+    const year = document.getElementById('regYear').value;
     const phone = document.getElementById('regPhone').value;
     const pass = document.getElementById('regPassword').value;
     const confirmPass = document.getElementById('regConfirmPassword').value;
 
-    // ตรวจสอบข้อมูลให้ครบ
     if (!name || !faculty || !year || !phone || !pass) { 
-        alert("กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง"); 
-        return; 
+        alert("กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง"); return; 
     }
+
+    // ✅ ตรวจสอบรหัสผ่าน: ต้องมีอักษร+ตัวเลข และไม่เกิน 10 ตัว
+    const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
+    if (!passRegex.test(pass)) {
+        alert("รหัสผ่านต้องประกอบด้วยตัวอักษรและตัวเลข และมีความยาวไม่เกิน 10 ตัวอักษร");
+        return;
+    }
+
     if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
         await db.collection("users").doc(phone).set({
             name: name,
-            faculty: faculty, // บันทึกคณะ
-            year: year,       // บันทึกชั้นปี
+            faculty: faculty,
+            year: year,
             phone: phone,
             password: pass,
             points: 0,
+            returnCount: 0, // ✅ เริ่มต้นจำนวนครั้งที่คืนที่ 0
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // เก็บข้อมูลลงเครื่อง
         localStorage.setItem('userPhone', phone);
         localStorage.setItem('userName', name);
         localStorage.setItem('userFaculty', faculty);
         localStorage.setItem('userYear', year);
         localStorage.setItem('userPoints', 0);
+        localStorage.setItem('returnCount', 0); // ✅ เก็บจำนวนครั้งลงเครื่อง
 
         alert("ลงทะเบียนสำเร็จ!");
         window.location.replace('index.html');
@@ -80,7 +85,7 @@ async function performRegister() {
     }
 }
 
-// 4. ฟังก์ชันเข้าสู่ระบบ
+// 4. ฟังก์ชันเข้าสู่ระบบ (โหลดข้อมูล ReturnCount เพิ่ม)
 async function performLogin() {
     const phone = document.getElementById('loginPhone').value;
     const pass = document.getElementById('loginPassword').value;
@@ -94,20 +99,24 @@ async function performLogin() {
             if (userData.password === pass) {
                 localStorage.setItem('userPhone', phone);
                 localStorage.setItem('userName', userData.name);
+                localStorage.setItem('userFaculty', userData.faculty || '-');
+                localStorage.setItem('userYear', userData.year || '-');
                 localStorage.setItem('userPoints', userData.points || 0);
+                localStorage.setItem('returnCount', userData.returnCount || 0); // ✅ โหลดจำนวนครั้ง
                 window.location.replace('index.html');
             } else { alert("รหัสผ่านไม่ถูกต้อง"); }
         } else { alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ"); }
     } catch (error) { alert("เกิดข้อผิดพลาด: " + error.message); }
 }
 
-// 5. แสดงผลข้อมูล
+// 5. แสดงผลข้อมูล (เพิ่มการแสดงผล ReturnCount)
 function loadUserData() {
     const name = localStorage.getItem('userName') || 'ผู้ใช้งาน';
     const phone = localStorage.getItem('userPhone') || '...';
     const faculty = localStorage.getItem('userFaculty') || '-';
     const year = localStorage.getItem('userYear') || '-';
     const points = localStorage.getItem('userPoints') || '0';
+    const returnCount = localStorage.getItem('returnCount') || '0';
 
     if (document.getElementById('username')) document.getElementById('username').innerText = name;
     if (document.getElementById('userphone')) document.getElementById('userphone').innerText = phone;
@@ -115,9 +124,14 @@ function loadUserData() {
     if (document.getElementById('useryear')) document.getElementById('useryear').innerText = year;
     if (document.getElementById('points')) document.getElementById('points').innerText = points;
     if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = points;
+    
+    // ✅ แสดงจำนวนครั้งที่คืนในหน้าจอ (ถ้ามี Element ID นี้)
+    if (document.getElementById('returnCountDisplay')) {
+        document.getElementById('returnCountDisplay').innerText = returnCount;
+    }
 }
 
-// 6. ฟังก์ชันคืนกล่อง
+// 6. ฟังก์ชันคืนกล่อง (ปรับแต้มเป็น +5 และเพิ่มจำนวนครั้ง)
 async function returnBoxWithImage() {
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
@@ -140,13 +154,19 @@ async function returnBoxWithImage() {
         });
 
         const userRef = db.collection("users").doc(userPhone);
-        await userRef.update({ points: firebase.firestore.FieldValue.increment(10) });
+        await userRef.update({ 
+            points: firebase.firestore.FieldValue.increment(5), // ✅ เปลี่ยนเป็น +5 แต้ม
+            returnCount: firebase.firestore.FieldValue.increment(1) // ✅ เพิ่มจำนวนครั้ง +1
+        });
 
+        // อัปเดตข้อมูลในเครื่อง
         let currentPoints = parseInt(localStorage.getItem('userPoints') || 0);
-        currentPoints += 10;
-        localStorage.setItem('userPoints', currentPoints);
+        let currentReturnCount = parseInt(localStorage.getItem('returnCount') || 0);
+        
+        localStorage.setItem('userPoints', currentPoints + 5);
+        localStorage.setItem('returnCount', currentReturnCount + 1);
 
-        alert("คืนกล่องสำเร็จ!");
+        alert("คืนกล่องสำเร็จ! ได้รับ 5 แต้ม");
         window.location.replace('index.html');
     } catch (error) { alert("เกิดข้อผิดพลาด"); }
 }
@@ -155,13 +175,5 @@ function logout() {
     localStorage.clear();
     window.location.replace('login.html');
 }
-
-
-
-
-
-
-
-
 
 
