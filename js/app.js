@@ -42,25 +42,35 @@ window.onload = function() {
 // 3. ฟังก์ชันลงทะเบียน (ใช้เบอร์โทรเป็น ID)
 async function performRegister() {
     const name = document.getElementById('regName').value;
+    const faculty = document.getElementById('regFaculty').value; // ดึงคณะ
+    const year = document.getElementById('regYear').value;       // ดึงชั้นปี
     const phone = document.getElementById('regPhone').value;
     const pass = document.getElementById('regPassword').value;
     const confirmPass = document.getElementById('regConfirmPassword').value;
 
-    if (!name || !phone || !pass) { alert("กรุณากรอกข้อมูลให้ครบถ้วน"); return; }
+    // ตรวจสอบข้อมูลให้ครบ
+    if (!name || !faculty || !year || !phone || !pass) { 
+        alert("กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง"); 
+        return; 
+    }
     if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
-        // บันทึกโดยใช้เบอร์โทรเป็น ID หลัก
         await db.collection("users").doc(phone).set({
             name: name,
+            faculty: faculty, // บันทึกคณะ
+            year: year,       // บันทึกชั้นปี
             phone: phone,
             password: pass,
             points: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        // เก็บข้อมูลลงเครื่อง
         localStorage.setItem('userPhone', phone);
         localStorage.setItem('userName', name);
+        localStorage.setItem('userFaculty', faculty);
+        localStorage.setItem('userYear', year);
         localStorage.setItem('userPoints', 0);
 
         alert("ลงทะเบียนสำเร็จ!");
@@ -95,10 +105,14 @@ async function performLogin() {
 function loadUserData() {
     const name = localStorage.getItem('userName') || 'ผู้ใช้งาน';
     const phone = localStorage.getItem('userPhone') || '...';
+    const faculty = localStorage.getItem('userFaculty') || '-';
+    const year = localStorage.getItem('userYear') || '-';
     const points = localStorage.getItem('userPoints') || '0';
 
     if (document.getElementById('username')) document.getElementById('username').innerText = name;
     if (document.getElementById('userphone')) document.getElementById('userphone').innerText = phone;
+    if (document.getElementById('userfaculty')) document.getElementById('userfaculty').innerText = faculty;
+    if (document.getElementById('useryear')) document.getElementById('useryear').innerText = year;
     if (document.getElementById('points')) document.getElementById('points').innerText = points;
     if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = points;
 }
@@ -141,6 +155,7 @@ function logout() {
     localStorage.clear();
     window.location.replace('login.html');
 }
+
 
 
 
