@@ -15,34 +15,34 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
+// 2. ฟังก์ชันเริ่มงานเมื่อโหลดหน้าจอ
 window.onload = async function() {
     const path = window.location.pathname.toLowerCase();
     const isLoginPage = path.includes('login.html');
     const isRegisterPage = path.includes('register.html');
     const isAdminPage = path.includes('admin');
 
-    // 1. รอถาม LINE ให้เสร็จก่อนเสมอ (เพื่อให้ได้ชื่อและ ID ล่าสุด)
+    // รอให้ LINE และ Firebase ตรวจสอบสถานะให้เสร็จก่อน
     await initLIFF();
 
-    let userPhone = localStorage.getItem('userPhone');
+    const userPhone = localStorage.getItem('userPhone'); // จะมีค่าถ้ามี user ใน Firebase เท่านั้น
 
-    // 2. ถ้าเป็นหน้าสมัครสมาชิก ให้ดึงชื่อจาก LINE มาใส่ในช่อง
+    // จัดการเรื่องการดึงชื่อจาก LINE มาใส่ในหน้าสมัคร
     const tempName = localStorage.getItem('tempLineName');
     if (tempName && document.getElementById('regName')) {
         document.getElementById('regName').value = tempName;
     }
 
-    // 3. จัดการการย้ายหน้า
+    // --- ระบบควบคุมเส้นทาง (Routing) ---
     if (!userPhone) {
-        // ❌ ถ้าไม่มีข้อมูลผู้ใช้ และไม่ได้อยู่หน้าสมัครสมาชิก
+        // กรณีไม่มีข้อมูลในระบบ และไม่ได้อยู่หน้าสมัครหรือแอดมิน -> บังคับไปหน้า Register
         if (!isRegisterPage && !isAdminPage) {
-            // ✅ เปลี่ยนจาก login.html เป็น register.html เพื่อให้มันไปดึงชื่อจาก LINE มาสมัคร
-            window.location.replace('register.html'); 
+            window.location.replace('register.html');
             return;
         }
     } else {
-        // ถ้าล็อกอินสำเร็จแล้ว ห้ามอยู่หน้า Login/Register
-        if (isLoginPage || isRegisterPage) {
+        // กรณีมีข้อมูลในระบบแล้ว แต่ดันหลงไปหน้า Register หรือ Login -> ส่งไปหน้าหลัก
+        if (isRegisterPage || isLoginPage) {
             window.location.replace('index.html');
             return;
         }
@@ -51,6 +51,7 @@ window.onload = async function() {
     loadUserData();
 };
 
+// 3. ฟังก์ชันเชื่อมต่อ LINE และเช็คฐานข้อมูล
 async function initLIFF() {
     try {
         await liff.init({ liffId: "2008458855-wE0xODVx" });
@@ -58,25 +59,24 @@ async function initLIFF() {
             const profile = await liff.getProfile();
             const lineUserId = profile.userId;
 
-            // ตรวจสอบใน Firebase
+            // ตรวจสอบใน Firebase ทันที
             const userDoc = await db.collection("users").doc(lineUserId).get();
             
             if (userDoc.exists) {
-                // ✅ ถ้าเจอข้อมูล: บันทึกเข้าเครื่องตามปกติ
+                // ✅ เป็นสมาชิกอยู่แล้ว: เก็บข้อมูลเข้าเครื่อง
                 const userData = userDoc.data();
                 localStorage.setItem('userPhone', lineUserId);
                 localStorage.setItem('realPhone', userData.phone);
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('userPoints', userData.points || 0);
             } else {
-                // ❌ ถ้าไม่เจอข้อมูล (กรณีคุณลบแอคเคาท์ทิ้งไป):
-                // ให้ล้างค่าเก่าในเครื่องทิ้ง เพื่อให้ระบบดึงชื่อจาก LINE ใหม่มาเตรียมสมัคร
-                localStorage.clear(); 
+                // ❌ ไม่พบในฐานข้อมูล: ล้างค่าเก่า และเตรียมข้อมูลไปหน้าสมัคร
+                localStorage.removeItem('userPhone');
                 localStorage.setItem('tempLineName', profile.displayName);
                 localStorage.setItem('tempLineUserId', lineUserId);
             }
         } else {
-            // ถ้ายังไม่ Login LINE ให้สั่ง Login
+            // ถ้ายังไม่ Login LINE ให้สั่ง Login อัตโนมัติ
             liff.login();
         }
     } catch (error) {
@@ -92,37 +92,37 @@ async function performRegister() {
     const confirmPass = document.getElementById('regConfirmPassword').value;
     const lineUserId = localStorage.getItem('tempLineUserId'); 
 
-    if (!lineUserId) { alert("กรุณาเปิดแอปผ่าน LINE"); return; }
+    if (!lineUserId) { alert("กรุณาเปิดผ่าน LINE"); return; }
     if (!name || !phone || !pass) { alert("กรุณากรอกข้อมูลให้ครบถ้วน"); return; }
     if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
         await db.collection("users").doc(lineUserId).set({
             name: name,
-            phone: phone, // เบอร์โทรที่กรอก
+            phone: phone,
             password: pass,
             lineId: lineUserId,
             points: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        // สมัครเสร็จแล้วเซ็ตค่าล็อกอินทันที
         localStorage.setItem('userPhone', lineUserId); 
-        localStorage.setItem('realPhone', phone); // ✅ เก็บเบอร์โทรจริง
+        localStorage.setItem('realPhone', phone);
         localStorage.setItem('userName', name);
         localStorage.setItem('userPoints', 0);
 
         alert("ลงทะเบียนสำเร็จ!");
-        window.location.href = 'index.html';
+        window.location.replace('index.html');
     } catch (error) {
         alert("สมัครไม่สำเร็จ: " + error.message);
     }
 }
 
-// 5. แสดงผลข้อมูล
+// 5. แสดงผลข้อมูลผู้ใช้
 function loadUserData() {
     const name = localStorage.getItem('userName') || 'ผู้ใช้งาน';
-    // ✅ ดึงเบอร์จริงมาโชว์ ถ้าไม่มีให้ใช้ตัวสำรอง
-    const displayPhone = localStorage.getItem('realPhone') || localStorage.getItem('userPhone') || '...';
+    const displayPhone = localStorage.getItem('realPhone') || '...';
     const points = localStorage.getItem('userPoints') || '0';
 
     if (document.getElementById('username')) document.getElementById('username').innerText = name;
@@ -135,9 +135,9 @@ function loadUserData() {
 async function returnBoxWithImage() {
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
-    const userPhone = localStorage.getItem('userPhone'); // ใช้ Line ID บันทึก
+    const userPhone = localStorage.getItem('userPhone');
 
-    if (!boxId || !imageFile) { alert("กรุณาระบุหมายเลขกล่องและถ่ายรูป"); return; }
+    if (!boxId || !imageFile) { alert("กรุณาระบุข้อมูลให้ครบ"); return; }
 
     try {
         const storageRef = storage.ref(`returns/${Date.now()}_${boxId}.jpg`);
@@ -160,16 +160,16 @@ async function returnBoxWithImage() {
         currentPoints += 10;
         localStorage.setItem('userPoints', currentPoints);
 
-        alert("คืนกล่องสำเร็จ! ได้รับ 10 คะแนน");
-        window.location.href = 'index.html';
-    } catch (error) { alert("เกิดข้อผิดพลาดในการบันทึก"); }
+        alert("คืนกล่องสำเร็จ!");
+        window.location.replace('index.html');
+    } catch (error) { alert("เกิดข้อผิดพลาด"); }
 }
 
+// 7. ออกจากระบบ
 function logout() {
     localStorage.clear();
-    window.location.href = 'login.html';
+    window.location.replace('register.html');
 }
-
 
 
 
