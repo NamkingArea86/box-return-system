@@ -16,34 +16,37 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 
 window.onload = async function() {
-    // 1. ตรวจสอบก่อนว่าในเครื่องมีข้อมูลอยู่แล้วไหม
-    let userPhone = localStorage.getItem('userPhone');
     const path = window.location.pathname.toLowerCase();
-    
     const isLoginPage = path.includes('login.html');
     const isRegisterPage = path.includes('register.html');
     const isAdminPage = path.includes('admin');
 
-    // 2. ถ้ายังไม่มีข้อมูลในเครื่อง ให้รอถาม LINE (initLIFF)
-    if (!userPhone) {
-        await initLIFF();
-        userPhone = localStorage.getItem('userPhone'); // เช็คอีกรอบหลังจากรอ LINE
+    // 1. รอถาม LINE ให้เสร็จก่อนเสมอ (เพื่อให้ได้ชื่อและ ID ล่าสุด)
+    await initLIFF();
+
+    let userPhone = localStorage.getItem('userPhone');
+
+    // 2. ถ้าเป็นหน้าสมัครสมาชิก ให้ดึงชื่อจาก LINE มาใส่ในช่อง
+    const tempName = localStorage.getItem('tempLineName');
+    if (tempName && document.getElementById('regName')) {
+        document.getElementById('regName').value = tempName;
     }
 
-    // 3. Logic การตัดสินใจย้ายหน้า (ย้ายครั้งเดียวจบ)
+    // 3. จัดการการย้ายหน้า
     if (!userPhone) {
-        // ถ้าถาม LINE แล้วก็ยังไม่มีข้อมูล (คนใหม่จริง ๆ)
+        // ถ้าไม่มีข้อมูลผู้ใช้ (ลบแอคเคาท์ไปแล้ว) และไม่ได้อยู่หน้าสาธารณะ
         if (!isLoginPage && !isRegisterPage && !isAdminPage) {
             window.location.replace('login.html');
+            return;
         }
     } else {
-        // ถ้ามีข้อมูลแล้ว ห้ามอยู่หน้าสมัคร/ล็อกอิน
+        // ถ้าล็อกอินสำเร็จแล้ว ห้ามอยู่หน้า Login/Register
         if (isLoginPage || isRegisterPage) {
             window.location.replace('index.html');
+            return;
         }
     }
 
-    // 4. แสดงผลข้อมูล
     loadUserData();
 };
 
@@ -56,17 +59,24 @@ async function initLIFF() {
 
             // ตรวจสอบใน Firebase
             const userDoc = await db.collection("users").doc(lineUserId).get();
+            
             if (userDoc.exists) {
+                // ✅ ถ้าเจอข้อมูล: บันทึกเข้าเครื่องตามปกติ
                 const userData = userDoc.data();
                 localStorage.setItem('userPhone', lineUserId);
                 localStorage.setItem('realPhone', userData.phone);
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('userPoints', userData.points || 0);
             } else {
-                // ถ้าไม่เคยสมัคร ให้เตรียมชื่อไว้เฉยๆ แต่อย่าเพิ่งดีดหน้าในนี้ (ให้ onload จัดการ)
+                // ❌ ถ้าไม่เจอข้อมูล (กรณีคุณลบแอคเคาท์ทิ้งไป):
+                // ให้ล้างค่าเก่าในเครื่องทิ้ง เพื่อให้ระบบดึงชื่อจาก LINE ใหม่มาเตรียมสมัคร
+                localStorage.clear(); 
                 localStorage.setItem('tempLineName', profile.displayName);
                 localStorage.setItem('tempLineUserId', lineUserId);
             }
+        } else {
+            // ถ้ายังไม่ Login LINE ให้สั่ง Login
+            liff.login();
         }
     } catch (error) {
         console.error("LIFF Error:", error);
@@ -158,6 +168,7 @@ function logout() {
     localStorage.clear();
     window.location.href = 'login.html';
 }
+
 
 
 
