@@ -145,18 +145,35 @@ async function fetchHistoryFromFirebase(phone) {
 async function loadUserData() {
     const userPhone = localStorage.getItem('userPhone');
     if(!userPhone) return;
+
     try {
         const userDoc = await db.collection("users").doc(userPhone).get();
+        
         if (userDoc.exists) {
             const data = userDoc.data();
-            const setUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+            
+            // ฟังก์ชันช่วยใส่ข้อมูลลงหน้าจอ (กัน Error ถ้าหา ID ไม่เจอ)
+            const setUI = (id, val) => { 
+                const el = document.getElementById(id);
+                if(el) el.innerText = val || "-"; 
+            };
+
+            // ใส่ข้อมูลลงตาม ID ที่ตั้งไว้ใน HTML
             setUI('username', data.name);
+            setUI('userphone', data.phone);
+            setUI('userid', data.studentId); // ต้องตรงกับที่เก็บตอนลงทะเบียน
+            setUI('userfaculty', data.faculty);
+            setUI('useryear', data.year);
             setUI('points', data.points || 0);
             setUI('returnCountDisplay', data.returnCount || 0);
-            setUI('userid', data.studentId);
-        }
-    } catch(e) { console.log(e); }
-}
 
+        } else {
+            console.log("ไม่พบข้อมูลผู้ใช้ในระบบ");
+        }
+    } catch (e) {
+        console.error("Error loading user data:", e);
+    }
+}
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
 
