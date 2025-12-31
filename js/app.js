@@ -252,3 +252,50 @@ function logout() {
     localStorage.clear(); 
     window.location.replace('login.html'); 
 }
+
+// ฟังก์ชันดึงอันดับคะแนนผู้ใช้ทุกคน (Leaderboard All Users)
+async function loadLeaderboard() {
+    const tableBody = document.getElementById('leaderboardBody');
+    if (!tableBody) return;
+
+    try {
+        // ดึงข้อมูลผู้ใช้ "ทุกคน" เรียงจากคะแนนมากไปน้อย
+        const snapshot = await db.collection("users")
+            .orderBy("points", "desc")
+            .get();
+
+        if (snapshot.empty) {
+            tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>ยังไม่มีข้อมูลผู้ใช้ในระบบ</td></tr>";
+            return;
+        }
+
+        let html = "";
+        let rank = 1;
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            // เช็คว่าถ้าคะแนนเป็น undefined ให้เป็น 0
+            const userPoints = data.points || 0;
+            const rowClass = rank === 1 ? 'rank-1' : ''; 
+            
+            html += `
+                <tr class="${rowClass}">
+                    <td style="text-align:center;">${rank === 1 ? '🥇' : rank}</td>
+                    <td>
+                        <div style="font-weight:bold;">${data.name || "ไม่ระบุชื่อ"}</div>
+                        <div style="font-size:12px; color:#666;">📞 ${data.phone || "-"}</div>
+                        <div style="font-size:11px; color:#888;">${data.faculty || ""} ${data.year || ""}</div>
+                    </td>
+                    <td style="text-align:right;">
+                        <span class="points-badge">${userPoints} แต้ม</span>
+                    </td>
+                </tr>`;
+            rank++;
+        });
+
+        tableBody.innerHTML = html;
+    } catch (e) {
+        console.error("Leaderboard Error:", e);
+        tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center; color:red;'>ไม่สามารถโหลดข้อมูลได้ (ตรวจสอบ Index ใน Firebase)</td></tr>";
+    }
+}
