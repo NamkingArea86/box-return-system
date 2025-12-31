@@ -8,63 +8,131 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        .admin-header {
+            background: #333;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 0 0 20px 20px;
+        }
+        .btn-back {
+            background: #666;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 14px;
+            float: left;
+        }
+        .history-card {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .delete-btn {
+            position: absolute;
+            right: 15px;
+            bottom: 15px;
+            background: #ffebee;
+            color: #c62828;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>🛠️ แผงควบคุมแอดมิน</h2>
-        <p>ประวัติการยืม-คืนกล่องทั้งหมดในระบบ</p>
+    <div class="admin-header">
+        <a href="user_points.html" class="btn-back">⬅️ กลับ</a>
+        <h2 style="margin:0;">🛠️ แผงควบคุมแอดมิน</h2>
+        <p style="margin:5px 0 0 0; font-size:14px; opacity:0.8;">ประวัติการยืม-คืนทั้งหมดในระบบ</p>
     </div>
 
-    <div class="container">
+    <div class="container" style="padding: 15px;">
         <div id="adminHistoryList">
-            <p style="text-align:center;">กำลังโหลดข้อมูล...</p>
+            <p style="text-align:center; padding:50px;">กำลังโหลดข้อมูลจากระบบ...</p>
         </div>
     </div>
 
     <script src="js/app.js"></script>
 
     <script>
-        // 3. ฟังก์ชันดึงข้อมูลทั้งหมด (สำหรับแอดมิน)
+        // ฟังก์ชันดึงประวัติทั้งหมด
         async function fetchAllHistory() {
             const container = document.getElementById('adminHistoryList');
             try {
-                // ดึงรายการ transactions ทั้งหมดจาก Firebase
+                // ดึงข้อมูลเรียงตามเวลาล่าสุด
                 const snapshot = await db.collection("transactions")
                     .orderBy("timestamp", "desc")
                     .get();
 
                 if (snapshot.empty) {
-                    container.innerHTML = "<p style='text-align:center;'>ยังไม่มีประวัติการใช้งาน</p>";
+                    container.innerHTML = `
+                        <div style="text-align:center; padding:50px; color:#888;">
+                            <span style="font-size:50px;">Empty</span>
+                            <p>ยังไม่มีประวัติการทำรายการ</p>
+                        </div>`;
                     return;
                 }
 
                 let html = "";
                 snapshot.forEach(doc => {
                     const item = doc.data();
-                    const color = item.type === 'borrow' ? '#4CAF50' : '#FF9800';
+                    const docId = doc.id; // ใช้สำหรับลบ
+                    const isBorrow = item.type === 'borrow';
+                    const color = isBorrow ? '#4CAF50' : '#FF9800';
+                    
                     html += `
-                        <div class="history-item" style="border-left: 5px solid ${color}; background:#fff; padding:15px; margin-bottom:10px; border-radius:10px; shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <div style="display:flex; justify-content:space-between;">
-                                <strong style="color:${color};">${item.type === 'borrow' ? '📥 ยืม' : '📤 คืน'}</strong>
+                        <div class="history-card" style="border-left: 6px solid ${color};">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="color:${color}; font-size:16px;">
+                                    ${isBorrow ? '📥 ยืมกล่อง' : '📤 คืนกล่อง'}
+                                </strong>
                                 <small style="color:#888;">${item.date || ''}</small>
                             </div>
-                            <div style="font-size:14px; margin-top:5px;">
-                                <b>เลขกล่อง:</b> ${item.boxId} | <b>เบอร์ผู้ใช้:</b> ${item.userPhone}<br>
-                                <b>สถานที่:</b> ${item.shopName}
+                            <div style="font-size:14px; margin-top:8px; line-height:1.6;">
+                                👤 <b>ผู้ใช้:</b> ${item.userPhone}<br>
+                                📦 <b>เลขกล่อง:</b> ${item.boxId}<br>
+                                📍 <b>สถานที่:</b> ${item.shopName || 'ไม่ระบุ'}
                             </div>
+                            <button class="delete-btn" onclick="deleteHistory('${docId}')">🗑️ ลบ</button>
                         </div>`;
                 });
                 container.innerHTML = html;
             } catch (e) {
                 console.error(e);
-                container.innerHTML = "<p style='color:red;'>เกิดข้อผิดพลาด: " + e.message + "</p>";
+                container.innerHTML = "<p style='color:red; text-align:center;'>ข้อผิดพลาด: " + e.message + "</p>";
             }
         }
 
-        // เรียกใช้งานเมื่อโหลดหน้าเสร็จ
+        // ฟังก์ชันลบประวัติ (Admin Only)
+        async function deleteHistory(id) {
+            if (confirm("ยืนยันการลบรายการนี้? (ไม่สามารถกู้คืนได้)")) {
+                try {
+                    await db.collection("transactions").doc(id).delete();
+                    alert("ลบรายการสำเร็จ");
+                    fetchAllHistory(); // โหลดข้อมูลใหม่
+                } catch (e) {
+                    alert("ลบไม่สำเร็จ: " + e.message);
+                }
+            }
+        }
+
+        // รันฟังก์ชันเมื่อเปิดหน้า
         window.onload = function() {
-            fetchAllHistory();
+            if (typeof db !== 'undefined') {
+                fetchAllHistory();
+            } else {
+                alert("Firebase ไม่พร้อมใช้งาน ตรวจสอบไฟล์ app.js");
+            }
         };
     </script>
 </body>
