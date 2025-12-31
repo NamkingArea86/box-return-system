@@ -15,56 +15,38 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 2. ฟังก์ชันตรวจสอบสิทธิ์เมื่อโหลดหน้าจอ
-window.onload = function() {
-            // --- ส่วนเดิมของคุณ ---
-            const historyData = JSON.parse(localStorage.getItem('borrowHistory')) || [];
-            const container = document.getElementById('historyBox');
+// 2. ฟังก์ชันทำงานเมื่อโหลดหน้าจอ (ตรวจสอบสิทธิ์ และ แสดงข้อมูล)
+window.onload = async function() {
+    const userPhone = localStorage.getItem('userPhone');
+    const path = window.location.pathname.toLowerCase();
 
-            // --- เพิ่มส่วนนี้: ดึงจำนวนครั้งจาก LocalStorage มาโชว์ ---
-            const count = localStorage.getItem('returnCount') || '0';
-            if (document.getElementById('returnCountDisplay')) {
-                document.getElementById('returnCountDisplay').innerText = count;
-            }
+    const isLoginPage = path.includes('login.html');
+    const isRegisterPage = path.includes('register.html');
+    const isAdminPage = path.includes('admin');
 
-            // --- Logic แสดงรายการประวัติเดิมของคุณ ---
-            if (historyData.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <span class="empty-icon">📭</span>
-                        <h3>คุณยังไม่เคยยืมกล่องกับเรา</h3>
-                        <p style="font-size:14px;">เริ่มยืมครั้งแรกได้ที่เมนู "ยืม"</p>
-                        <button onclick="location.href='scan_borrow.html'" style="width:auto; margin-top:10px; font-size:14px;">
-                            ไปที่หน้ายืม
-                        </button>
-                    </div>
-                `;
-            } else {
-                let html = '';
-                historyData.slice().reverse().forEach(item => {
-                    let statusColor = item.type === 'borrow' ? '#e8f5e9' : '#fff3e0';
-                    let icon = item.type === 'borrow' ? '📥' : '📤';
-                    let text = item.type === 'borrow' ? 'ยืมกล่อง' : 'คืนกล่อง';
-                    
-                    html += `
-                    <div class="history-item" style="border-left: 5px solid ${item.type === 'borrow' ? '#4CAF50' : '#FF9800'};">
-                        <div style="display:flex; justify-content:space-between;">
-                            <strong>${icon} ${text}</strong>
-                            <small style="color:#888;">${item.date || 'ไม่ระบุวันที่'}</small>
-                        </div>
-                        <div style="margin-top:5px; font-size:14px;">
-                            หมายเลข: <b>${item.boxId}</b>
-                        </div>
-                    </div>
-                    `;
-                });
-                container.innerHTML = html;
-            }
-            
-            if(typeof loadUserData === 'function') loadUserData();
-        };
+    // ตรวจสอบการ Login
+    if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
+        window.location.replace('login.html');
+        return;
+    }
+    
+    if (userPhone && (isLoginPage || isRegisterPage)) {
+        window.location.replace('index.html');
+        return;
+    }
 
-// 3. ฟังก์ชันลงทะเบียน (เพิ่มเงื่อนไข Password และ ReturnCount)
+    // ถ้า Login แล้ว ให้ดึงข้อมูลมาแสดง
+    if (userPhone) {
+        await loadUserData(); // ดึงข้อมูลล่าสุดจาก Firebase
+        
+        // ถ้าอยู่ในหน้า history.html ให้แสดงรายการประวัติด้วย
+        if (path.includes('history.html')) {
+            renderHistoryUI();
+        }
+    }
+};
+
+// 3. ฟังก์ชันลงทะเบียน
 async function performRegister() {
     const name = document.getElementById('regName').value;
     const faculty = document.getElementById('regFaculty').value;
@@ -80,7 +62,7 @@ async function performRegister() {
     // ✅ ตรวจสอบรหัสผ่าน: ต้องมีอักษร+ตัวเลข และไม่เกิน 10 ตัว
     const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
     if (!passRegex.test(pass)) {
-        alert("รหัสผ่านต้องประกอบด้วยตัวอักษรและตัวเลข และมีความยาวไม่เกิน 10 ตัวอักษร");
+        alert("รหัสผ่านต้องมีทั้งตัวอักษรและตัวเลข และมีความยาวไม่เกิน 10 ตัวอักษร");
         return;
     }
 
@@ -94,17 +76,11 @@ async function performRegister() {
             phone: phone,
             password: pass,
             points: 0,
-            returnCount: 0, // ✅ เริ่มต้นจำนวนครั้งที่คืนที่ 0
+            returnCount: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         localStorage.setItem('userPhone', phone);
-        localStorage.setItem('userName', name);
-        localStorage.setItem('userFaculty', faculty);
-        localStorage.setItem('userYear', year);
-        localStorage.setItem('userPoints', 0);
-        localStorage.setItem('returnCount', 0); // ✅ เก็บจำนวนครั้งลงเครื่อง
-
         alert("ลงทะเบียนสำเร็จ!");
         window.location.replace('index.html');
     } catch (error) {
@@ -112,7 +88,7 @@ async function performRegister() {
     }
 }
 
-// 4. ฟังก์ชันเข้าสู่ระบบ (โหลดข้อมูล ReturnCount เพิ่ม)
+// 4. ฟังก์ชันเข้าสู่ระบบ
 async function performLogin() {
     const phone = document.getElementById('loginPhone').value;
     const pass = document.getElementById('loginPassword').value;
@@ -125,40 +101,44 @@ async function performLogin() {
             const userData = userDoc.data();
             if (userData.password === pass) {
                 localStorage.setItem('userPhone', phone);
-                localStorage.setItem('userName', userData.name);
-                localStorage.setItem('userFaculty', userData.faculty || '-');
-                localStorage.setItem('userYear', userData.year || '-');
-                localStorage.setItem('userPoints', userData.points || 0);
-                localStorage.setItem('returnCount', userData.returnCount || 0); // ✅ โหลดจำนวนครั้ง
                 window.location.replace('index.html');
             } else { alert("รหัสผ่านไม่ถูกต้อง"); }
         } else { alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ"); }
     } catch (error) { alert("เกิดข้อผิดพลาด: " + error.message); }
 }
 
-// 5. แสดงผลข้อมูล (เพิ่มการแสดงผล ReturnCount)
-function loadUserData() {
-    const name = localStorage.getItem('userName') || 'ผู้ใช้งาน';
-    const phone = localStorage.getItem('userPhone') || '...';
-    const faculty = localStorage.getItem('userFaculty') || '-';
-    const year = localStorage.getItem('userYear') || '-';
-    const points = localStorage.getItem('userPoints') || '0';
-    const returnCount = localStorage.getItem('returnCount') || '0';
+// 5. ดึงข้อมูลผู้ใช้จาก Firebase มาแสดงผล (ใช้ในหน้า Index และหน้าอื่นๆ)
+async function loadUserData() {
+    const userPhone = localStorage.getItem('userPhone');
+    if (!userPhone) return;
 
-    if (document.getElementById('username')) document.getElementById('username').innerText = name;
-    if (document.getElementById('userphone')) document.getElementById('userphone').innerText = phone;
-    if (document.getElementById('userfaculty')) document.getElementById('userfaculty').innerText = faculty;
-    if (document.getElementById('useryear')) document.getElementById('useryear').innerText = year;
-    if (document.getElementById('points')) document.getElementById('points').innerText = points;
-    if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = points;
-    
-    // ✅ แสดงจำนวนครั้งที่คืนในหน้าจอ (ถ้ามี Element ID นี้)
-    if (document.getElementById('returnCountDisplay')) {
-        document.getElementById('returnCountDisplay').innerText = returnCount;
+    try {
+        const userDoc = await db.collection("users").doc(userPhone).get();
+        if (userDoc.exists) {
+            const data = userDoc.data();
+            
+            // แสดงผลใน HTML ตาม ID ต่างๆ
+            if (document.getElementById('username')) document.getElementById('username').innerText = data.name;
+            if (document.getElementById('userphone')) document.getElementById('userphone').innerText = data.phone;
+            if (document.getElementById('userfaculty')) document.getElementById('userfaculty').innerText = data.faculty || '-';
+            if (document.getElementById('useryear')) document.getElementById('useryear').innerText = data.year || '-';
+            if (document.getElementById('points')) document.getElementById('points').innerText = data.points || 0;
+            if (document.getElementById('pointsDisplay')) document.getElementById('pointsDisplay').innerText = data.points || 0;
+            if (document.getElementById('returnCountDisplay')) document.getElementById('returnCountDisplay').innerText = data.returnCount || 0;
+
+            // อัปเดตข้อมูลใน LocalStorage เพื่อใช้ในหน้า History แบบ Offline ชั่วคราว
+            localStorage.setItem('userName', data.name);
+            localStorage.setItem('userPoints', data.points || 0);
+            localStorage.setItem('returnCount', data.returnCount || 0);
+            localStorage.setItem('userFaculty', data.faculty || '-');
+            localStorage.setItem('userYear', data.year || '-');
+        }
+    } catch (error) {
+        console.error("Error loading data:", error);
     }
 }
 
-// 6. ฟังก์ชันคืนกล่อง (ปรับแต้มเป็น +5 และเพิ่มจำนวนครั้ง)
+// 6. ฟังก์ชันคืนกล่อง (+5 แต้ม และเพิ่มจำนวนครั้ง)
 async function returnBoxWithImage() {
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
@@ -171,37 +151,67 @@ async function returnBoxWithImage() {
         await storageRef.put(imageFile);
         const imageUrl = await storageRef.getDownloadURL();
 
-        await db.collection("transactions").add({
+        const dateStr = new Date().toLocaleString('th-TH');
+
+        // บันทึกลงตาราง Transactions (สำหรับหน้าประวัติ)
+        const transData = {
             boxId: boxId,
             userPhone: userPhone,
             type: 'return',
             imageUrl: imageUrl,
-            date: new Date().toLocaleString('th-TH'),
+            date: dateStr,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        await db.collection("transactions").add(transData);
 
+        // อัปเดตข้อมูลใน Firebase (+5 แต้ม, +1 ครั้ง)
         const userRef = db.collection("users").doc(userPhone);
         await userRef.update({ 
-            points: firebase.firestore.FieldValue.increment(5), // ✅ เปลี่ยนเป็น +5 แต้ม
-            returnCount: firebase.firestore.FieldValue.increment(1) // ✅ เพิ่มจำนวนครั้ง +1
+            points: firebase.firestore.FieldValue.increment(5),
+            returnCount: firebase.firestore.FieldValue.increment(1)
         });
 
-        // อัปเดตข้อมูลในเครื่อง
-        let currentPoints = parseInt(localStorage.getItem('userPoints') || 0);
-        let currentReturnCount = parseInt(localStorage.getItem('returnCount') || 0);
-        
-        localStorage.setItem('userPoints', currentPoints + 5);
-        localStorage.setItem('returnCount', currentReturnCount + 1);
+        // บันทึกลง LocalStorage สำหรับหน้าประวัติ (เพื่อให้หน้า history แสดงผลทันที)
+        let historyData = JSON.parse(localStorage.getItem('borrowHistory')) || [];
+        historyData.push(transData);
+        localStorage.setItem('borrowHistory', JSON.stringify(historyData));
 
         alert("คืนกล่องสำเร็จ! ได้รับ 5 แต้ม");
         window.location.replace('index.html');
-    } catch (error) { alert("เกิดข้อผิดพลาด"); }
+    } catch (error) { alert("เกิดข้อผิดพลาดในการคืนกล่อง"); }
 }
 
+// 7. ฟังก์ชันแสดงประวัติในหน้า history.html
+function renderHistoryUI() {
+    const historyData = JSON.parse(localStorage.getItem('borrowHistory')) || [];
+    const container = document.getElementById('historyBox');
+    if (!container) return;
+
+    if (historyData.length === 0) {
+        container.innerHTML = `<div class="empty-state"><h3>ยังไม่มีข้อมูลการยืม-คืน</h3></div>`;
+        return;
+    }
+
+    let html = '';
+    historyData.slice().reverse().forEach(item => {
+        let icon = item.type === 'borrow' ? '📥' : '📤';
+        let text = item.type === 'borrow' ? 'ยืมกล่อง' : 'คืนกล่อง';
+        let color = item.type === 'borrow' ? '#4CAF50' : '#FF9800';
+        
+        html += `
+        <div class="history-item" style="border-left: 5px solid ${color};">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${icon} ${text}</strong>
+                <small style="color:#888;">${item.date}</small>
+            </div>
+            <div style="margin-top:5px; font-size:14px;">หมายเลข: <b>${item.boxId}</b></div>
+        </div>`;
+    });
+    container.innerHTML = html;
+}
+
+// 8. ฟังก์ชันออกจากระบบ
 function logout() {
     localStorage.clear();
     window.location.replace('login.html');
 }
-
-
-
