@@ -1,12 +1,12 @@
 // 1. ตั้งค่า Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDRYTht-6h5QDqFTGO6sr44TfuvDfApAPc",
-  authDomain: "box-return-system.firebaseapp.com",
-  projectId: "box-return-system",
-  storageBucket: "box-return-system.firebasestorage.app",
-  messagingSenderId: "272291754420",
-  appId: "1:272291754420:web:9ee1c794acbe190309c2e1",
-  measurementId: "G-8PX3LBXM3L"
+    apiKey: "AIzaSyDRYTht-6h5QDqFTGO6sr44TfuvDfApAPc",
+    authDomain: "box-return-system.firebaseapp.com",
+    projectId: "box-return-system",
+    storageBucket: "box-return-system.firebasestorage.app",
+    messagingSenderId: "272291754420",
+    appId: "1:272291754420:web:9ee1c794acbe190309c2e1",
+    measurementId: "G-8PX3LBXM3L"
 };
 
 if (!firebase.apps.length) {
@@ -15,124 +15,68 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 2. ฟังก์ชันทำงานเมื่อโหลดหน้าจอ (Router & Initial Data)
+// 2. จัดการเมื่อโหลดหน้าจอ
 window.onload = async function() {
     const userPhone = localStorage.getItem('userPhone');
     const path = window.location.pathname.toLowerCase();
 
     const isLoginPage = path.includes('login.html');
     const isRegisterPage = path.includes('register.html');
-    const isAdminPage = path.includes('admin');
 
-    // ตรวจสอบการ Login
-    if (!userPhone && !isLoginPage && !isRegisterPage && !isAdminPage) {
+    if (!userPhone && !isLoginPage && !isRegisterPage) {
         window.location.replace('login.html');
         return;
     }
     
-    if (userPhone && (isLoginPage || isRegisterPage)) {
-        window.location.replace('index.html');
-        return;
-    }
-
-    // โหลดข้อมูลตามหน้าที่อยู่
     if (userPhone) {
         await loadUserData(); 
-        
-        if (path.includes('history.html')) {
-            fetchHistoryFromFirebase(userPhone); 
-        }
-        
-        if (path.includes('rewards.html')) {
-            loadLeaderboard();
-        }
+        if (path.includes('history.html')) fetchHistoryFromFirebase(userPhone); 
+        if (path.includes('rewards.html')) loadLeaderboard();
     }
 };
 
-// 3. ฟังก์ชันลงทะเบียน
-async function performRegister() {
-    const name = document.getElementById('regName').value;
-    const faculty = document.getElementById('regFaculty').value;
-    const year = document.getElementById('regYear').value;
-    const phone = document.getElementById('regPhone').value;
-    const pass = document.getElementById('regPassword').value;
-    const confirmPass = document.getElementById('regConfirmPassword').value;
+// --- ฟังก์ชันการยืม (ที่ทำให้ปุ่มในหน้ายืมของคุณทำงานได้) ---
+async function borrowBoxWithImage() {
+    const boxId = document.getElementById('boxInput').value;
+    const imageInput = document.getElementById('imageInput');
+    const imageFile = imageInput.files[0];
+    const userPhone = localStorage.getItem('userPhone');
+    const btnSubmit = document.getElementById('btnSubmit');
 
-    if (!name || !faculty || !year || !phone || !pass) { 
-        alert("กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง"); return; 
+    if (!boxId || !imageFile) { 
+        alert("กรุณากรอกหมายเลขกล่องและถ่ายรูป"); 
+        return; 
     }
-
-    // ตรวจสอบรหัสผ่าน: ต้องมีอักษร+ตัวเลข และไม่เกิน 10 ตัว
-    const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
-    if (!passRegex.test(pass)) {
-        alert("รหัสผ่านต้องมีทั้งตัวอักษรและตัวเลข และมีความยาวไม่เกิน 10 ตัวอักษร");
-        return;
-    }
-
-    if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
-        await db.collection("users").doc(phone).set({
-            name: name,
-            faculty: faculty,
-            year: year,
-            phone: phone,
-            password: pass,
-            points: 0,
-            returnCount: 0,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "กำลังบันทึก...";
+
+        // 1. อัปโหลดรูป
+        const storageRef = storage.ref(`borrows/${Date.now()}_${boxId}.jpg`);
+        await storageRef.put(imageFile);
+        const imageUrl = await storageRef.getDownloadURL();
+
+        // 2. บันทึกข้อมูล
+        await db.collection("transactions").add({
+            boxId: boxId,
+            userPhone: userPhone,
+            type: 'borrow',
+            imageUrl: imageUrl,
+            date: new Date().toLocaleString('th-TH'),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        localStorage.setItem('userPhone', phone);
-        alert("ลงทะเบียนสำเร็จ!");
+        alert("ยืมกล่องสำเร็จ!");
         window.location.replace('index.html');
     } catch (error) {
-        alert("สมัครไม่สำเร็จ: " + error.message);
+        alert("เกิดข้อผิดพลาด: " + error.message);
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "ยืนยันการยืม";
     }
 }
 
-// 4. ฟังก์ชันเข้าสู่ระบบ
-async function performLogin() {
-    const phone = document.getElementById('loginPhone').value;
-    const pass = document.getElementById('loginPassword').value;
-
-    if (!phone || !pass) { alert("กรุณากรอกข้อมูลให้ครบ"); return; }
-
-    try {
-        const userDoc = await db.collection("users").doc(phone).get();
-        if (userDoc.exists) {
-            const userData = userDoc.data();
-            if (userData.password === pass) {
-                localStorage.setItem('userPhone', phone);
-                window.location.replace('index.html');
-            } else { alert("รหัสผ่านไม่ถูกต้อง"); }
-        } else { alert("ไม่พบเบอร์โทรศัพท์นี้ในระบบ"); }
-    } catch (error) { alert("เกิดข้อผิดพลาด: " + error.message); }
-}
-
-// 5. ดึงข้อมูลผู้ใช้มาแสดงผล
-async function loadUserData() {
-    const userPhone = localStorage.getItem('userPhone');
-    if (!userPhone) return;
-
-    try {
-        const userDoc = await db.collection("users").doc(userPhone).get();
-        if (userDoc.exists) {
-            const data = userDoc.data();
-            const setUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
-            
-            setUI('username', data.name);
-            setUI('userphone', data.phone);
-            setUI('userfaculty', data.faculty || '-');
-            setUI('useryear', data.year || '-');
-            setUI('points', data.points || 0);
-            setUI('pointsDisplay', data.points || 0);
-            setUI('returnCountDisplay', data.returnCount || 0);
-        }
-    } catch (error) { console.error("Load User Error:", error); }
-}
-
-// 6. ฟังก์ชันคืนกล่อง (+5 แต้ม)
+// --- ฟังก์ชันการคืน (บวกแต้ม +5) ---
 async function returnBoxWithImage() {
     const boxId = document.getElementById('boxInputReturn').value;
     const imageFile = document.getElementById('imageInputReturn').files[0];
@@ -145,15 +89,11 @@ async function returnBoxWithImage() {
         await storageRef.put(imageFile);
         const imageUrl = await storageRef.getDownloadURL();
 
-        const transData = {
-            boxId: boxId,
-            userPhone: userPhone,
-            type: 'return',
-            imageUrl: imageUrl,
-            date: new Date().toLocaleString('th-TH'),
+        await db.collection("transactions").add({
+            boxId: boxId, userPhone: userPhone, type: 'return',
+            imageUrl: imageUrl, date: new Date().toLocaleString('th-TH'),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        await db.collection("transactions").add(transData);
+        });
 
         await db.collection("users").doc(userPhone).update({ 
             points: firebase.firestore.FieldValue.increment(5),
@@ -165,134 +105,82 @@ async function returnBoxWithImage() {
     } catch (error) { alert("เกิดข้อผิดพลาด"); }
 }
 
-// 7. ดึงประวัติจาก Firebase
-async function fetchHistoryFromFirebase(phone) {
-    const container = document.getElementById('historyBox');
-    if (!container) return;
+// --- ฟังก์ชันอื่นๆ (ลงทะเบียน, ล็อกอิน, โหลดข้อมูล) ---
+async function performRegister() {
+    const name = document.getElementById('regName').value;
+    const faculty = document.getElementById('regFaculty').value;
+    const year = document.getElementById('regYear').value;
+    const phone = document.getElementById('regPhone').value;
+    const pass = document.getElementById('regPassword').value;
+    const confirmPass = document.getElementById('regConfirmPassword').value;
+
+    const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
+    if (!passRegex.test(pass)) { alert("รหัสผ่านต้องมีอักษร+เลข ไม่เกิน 10 ตัว"); return; }
+    if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
-        const snapshot = await db.collection("transactions")
-            .where("userPhone", "==", phone)
-            .orderBy("timestamp", "desc")
-            .limit(20)
-            .get();
-
-        if (snapshot.empty) {
-            container.innerHTML = `<div class="empty-state"><h3>ยังไม่มีข้อมูลการยืม-คืน</h3></div>`;
-            return;
-        }
-
-        let html = '';
-        snapshot.forEach(doc => {
-            const item = doc.data();
-            let icon = item.type === 'borrow' ? '📥' : '📤';
-            let text = item.type === 'borrow' ? 'ยืมกล่อง' : 'คืนกล่อง';
-            let color = item.type === 'borrow' ? '#4CAF50' : '#FF9800';
-            html += `
-            <div class="history-item" style="border-left: 5px solid ${color}; padding:10px; margin-bottom:10px; background:#f9f9f9; border-radius:4px;">
-                <div style="display:flex; justify-content:space-between;">
-                    <strong>${icon} ${text}</strong>
-                    <small style="color:#888;">${item.date}</small>
-                </div>
-                <div style="margin-top:5px; font-size:14px;">หมายเลข: <b>${item.boxId}</b></div>
-            </div>`;
+        await db.collection("users").doc(phone).set({
+            name, faculty, year, phone, password: pass, points: 0, returnCount: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        container.innerHTML = html;
-    } catch (e) { console.error(e); }
+        localStorage.setItem('userPhone', phone);
+        window.location.replace('index.html');
+    } catch (error) { alert(error.message); }
 }
 
-// 8. ดึงข้อมูลอันดับคะแนน (Leaderboard)
+async function performLogin() {
+    const phone = document.getElementById('loginPhone').value;
+    const pass = document.getElementById('loginPassword').value;
+    try {
+        const userDoc = await db.collection("users").doc(phone).get();
+        if (userDoc.exists && userDoc.data().password === pass) {
+            localStorage.setItem('userPhone', phone);
+            window.location.replace('index.html');
+        } else { alert("เบอร์หรือรหัสผ่านผิด"); }
+    } catch (error) { alert(error.message); }
+}
+
+async function loadUserData() {
+    const userPhone = localStorage.getItem('userPhone');
+    const userDoc = await db.collection("users").doc(userPhone).get();
+    if (userDoc.exists) {
+        const data = userDoc.data();
+        const setUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+        setUI('username', data.name);
+        setUI('userphone', data.phone);
+        setUI('userfaculty', data.faculty);
+        setUI('useryear', data.year);
+        setUI('points', data.points);
+        setUI('returnCountDisplay', data.returnCount);
+    }
+}
+
 async function loadLeaderboard() {
     const body = document.getElementById("leaderboardBody");
     if (!body) return;
-
-    try {
-        const snapshot = await db.collection("users")
-            .orderBy("points", "desc")
-            .limit(50)
-            .get();
-
-        let html = "";
-        let rank = 1;
-
-        if (snapshot.empty) {
-            body.innerHTML = "<tr><td colspan='3' style='text-align:center;'>ยังไม่มีข้อมูล</td></tr>";
-            return;
-        }
-
-        snapshot.forEach((doc) => {
-            const user = doc.data();
-            const rowClass = rank === 1 ? 'rank-1' : '';
-            html += `
-                <tr class="${rowClass}">
-                    <td>${rank}</td>
-                    <td><b>${user.name || 'ไม่ทราบชื่อ'}</b><br><small>${user.phone}</small></td>
-                    <td style="text-align: right;"><span class="points-badge">${user.points || 0} แต้ม</span></td>
-                </tr>`;
-            rank++;
-        });
-        body.innerHTML = html;
-    } catch (error) { console.error(error); }
+    const snapshot = await db.collection("users").orderBy("points", "desc").limit(50).get();
+    let html = ""; let rank = 1;
+    snapshot.forEach(doc => {
+        const u = doc.data();
+        html += `<tr><td>${rank++}</td><td><b>${u.name}</b><br><small>${u.phone}</small></td><td align="right"><span class="points-badge">${u.points} แต้ม</span></td></tr>`;
+    });
+    body.innerHTML = html;
 }
 
-// 9. ออกจากระบบ
-function logout() {
-    localStorage.clear();
-    window.location.replace('login.html');
+async function fetchHistoryFromFirebase(phone) {
+    const container = document.getElementById('historyBox');
+    if (!container) return;
+    const snapshot = await db.collection("transactions").where("userPhone", "==", phone).orderBy("timestamp", "desc").get();
+    let html = "";
+    snapshot.forEach(doc => {
+        const item = doc.data();
+        const color = item.type === 'borrow' ? '#4CAF50' : '#FF9800';
+        html += `<div class="history-item" style="border-left: 5px solid ${color}; padding:10px; margin-bottom:10px; background:#f9f9f9;">
+                    <b>${item.type === 'borrow' ? '📥 ยืม' : '📤 คืน'}</b> <small>${item.date}</small><br>
+                    เลขกล่อง: ${item.boxId}
+                 </div>`;
+    });
+    container.innerHTML = html || "ไม่มีประวัติ";
 }
 
-// 10. ฟังก์ชันยืมกล่องพร้อมอัปโหลดรูป
-async function borrowBoxWithImage() {
-    const boxId = document.getElementById('boxInput').value;
-    const imageFile = document.getElementById('imageInput').files[0];
-    const userPhone = localStorage.getItem('userPhone');
-    const btnSubmit = document.getElementById('btnSubmit');
-
-    if (!boxId || !imageFile) { 
-        alert("กรุณาระบุหมายเลขกล่องและถ่ายรูปหลักฐาน"); 
-        return; 
-    }
-
-    if (!userPhone) {
-        alert("กรุณาเข้าสู่ระบบก่อนทำรายการ");
-        window.location.replace('login.html');
-        return;
-    }
-
-    try {
-        // เปลี่ยนสถานะปุ่มเพื่อป้องกันการกดซ้ำ
-        btnSubmit.disabled = true;
-        btnSubmit.innerText = "กำลังบันทึก...";
-
-        // 1. อัปโหลดรูปลง Firebase Storage
-        const storageRef = storage.ref(`borrows/${Date.now()}_${boxId}.jpg`);
-        await storageRef.put(imageFile);
-        const imageUrl = await storageRef.getDownloadURL();
-
-        const dateStr = new Date().toLocaleString('th-TH');
-
-        // 2. บันทึกข้อมูลธุรกรรมลง Firestore
-        const transData = {
-            boxId: boxId,
-            userPhone: userPhone,
-            type: 'borrow',
-            imageUrl: imageUrl,
-            date: dateStr,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        await db.collection("transactions").add(transData);
-
-        // 3. (เลือกได้) หากต้องการหักแต้มมัดจำ 5 แต้มตอนยืม
-        // const userRef = db.collection("users").doc(userPhone);
-        // await userRef.update({ points: firebase.firestore.FieldValue.increment(-5) });
-
-        alert("ยืมกล่องสำเร็จ!");
-        window.location.replace('index.html');
-
-    } catch (error) {
-        console.error("Error borrowing box:", error);
-        alert("เกิดข้อผิดพลาด: " + error.message);
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = "ยืนยันการยืม";
-    }
-}
+function logout() { localStorage.clear(); window.location.replace('login.html'); }
