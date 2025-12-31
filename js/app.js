@@ -259,43 +259,54 @@ async function loadLeaderboard() {
     if (!tableBody) return;
 
     try {
-        // ดึงข้อมูลผู้ใช้ "ทุกคน" เรียงจากคะแนนมากไปน้อย
-        const snapshot = await db.collection("users")
-            .orderBy("points", "desc")
-            .get();
+        // 1. ลองดึงข้อมูลแบบเรียงลำดับ (วิธีนี้ต้องการ Index ใน Firebase)
+        let snapshot;
+        try {
+            snapshot = await db.collection("users")
+                .orderBy("points", "desc")
+                .get();
+        } catch (orderByError) {
+            console.warn("OrderBy Error (อาจจะลืมทำ Index):", orderByError);
+            // 2. ถ้าดึงแบบเรียงลำดับไม่ได้ ให้ดึงแบบธรรมดามาโชว์ก่อน (กันหน้าจอขาว)
+            snapshot = await db.collection("users").get();
+        }
 
         if (snapshot.empty) {
-            tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>ยังไม่มีข้อมูลผู้ใช้ในระบบ</td></tr>";
+            tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:20px;'>ไม่พบรายชื่อสมาชิกในระบบ</td></tr>";
             return;
         }
 
-        let html = "";
-        let rank = 1;
-
+        let users = [];
         snapshot.forEach(doc => {
-            const data = doc.data();
-            // เช็คว่าถ้าคะแนนเป็น undefined ให้เป็น 0
-            const userPoints = data.points || 0;
-            const rowClass = rank === 1 ? 'rank-1' : ''; 
+            users.push({ id: doc.id, ...doc.data() });
+        });
+
+        // ถ้าต้องดึงแบบธรรมดามา ให้เรียงลำดับด้วย JavaScript แทนเพื่อแก้ปัญหา Index
+        users.sort((a, b) => (b.points || 0) - (a.points || 0));
+
+        let html = "";
+        users.forEach((data, index) => {
+            const rank = index + 1;
+            const rowClass = rank === 1 ? 'rank-1' : '';
             
             html += `
                 <tr class="${rowClass}">
                     <td style="text-align:center;">${rank === 1 ? '🥇' : rank}</td>
                     <td>
-                        <div style="font-weight:bold;">${data.name || "ไม่ระบุชื่อ"}</div>
+                        <div style="font-weight:bold; color:#333;">${data.name || "ไม่ระบุชื่อ"}</div>
                         <div style="font-size:12px; color:#666;">📞 ${data.phone || "-"}</div>
                         <div style="font-size:11px; color:#888;">${data.faculty || ""} ${data.year || ""}</div>
                     </td>
                     <td style="text-align:right;">
-                        <span class="points-badge">${userPoints} แต้ม</span>
+                        <span class="points-badge">${data.points || 0} แต้ม</span>
                     </td>
                 </tr>`;
-            rank++;
         });
 
         tableBody.innerHTML = html;
+
     } catch (e) {
-        console.error("Leaderboard Error:", e);
-        tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center; color:red;'>ไม่สามารถโหลดข้อมูลได้ (ตรวจสอบ Index ใน Firebase)</td></tr>";
+        console.error("Main Leaderboard Error:", e);
+        tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center; color:red; padding:20px;'>เกิดข้อผิดพลาด: " + e.message + "</td></tr>";
     }
 }
