@@ -3,63 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ตารางคะแนนผู้ใช้</title>
+    <title>รายชื่อผู้ใช้และคะแนนทั้งหมด</title>
     <link rel="stylesheet" href="style.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
     <style>
-        .leaderboard-table { width: 100%; border-collapse: collapse; background: white; border-radius: 15px; overflow: hidden; }
-        .leaderboard-table th, .leaderboard-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
-        .leaderboard-table th { background-color: #4CAF50; color: white; font-weight: 600; }
+        .leaderboard-table { width: 100%; border-collapse: collapse; background: white; border-radius: 15px; overflow: hidden; margin-top:10px; }
+        .leaderboard-table th, .leaderboard-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        .leaderboard-table th { background-color: #2E7D32; color: white; font-weight: 600; }
         .rank-1 { background-color: #fff9c4; font-weight: bold; }
-        .points-badge { background: #2E7D32; color: white; padding: 5px 12px; border-radius: 20px; font-size: 14px; }
+        .points-badge { background: #2E7D32; color: white; padding: 4px 10px; border-radius: 15px; font-size: 13px; font-weight: bold; }
+        
+        .admin-nav-btn {
+            background: #444; color: white; padding: 8px 15px; border-radius: 20px;
+            text-decoration: none; font-size: 12px; float: right; transition: 0.3s;
+        }
+        .admin-nav-btn:hover { background: #000; }
     </style>
 </head>
 <body>
 
-    <h2>🏆 อันดับคะแนนสะสม</h2>
+    <div style="padding: 20px 15px 10px 15px;">
+        <a href="admin.html" class="admin-nav-btn">🛠️ ดูประวัติรวม</a>
+        <h2 style="margin: 0; color: #2E7D32;">📊 รายชื่อสมาชิก</h2>
+        <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">แสดงรายชื่อผู้ใช้ทั้งหมดเรียงตามคะแนน</p>
+    </div>
 
-    <div class="box">
+    <div class="box" style="padding: 0; background: none; border: none;">
         <table class="leaderboard-table">
             <thead>
                 <tr>
-                    <th style="width: 50px;">อันดับ</th>
-                    <th>ชื่อ / เบอร์โทร</th>
-                    <th style="text-align: right;">คะแนน</th>
+                    <th style="width: 50px; text-align:center;">ลำดับ</th>
+                    <th>ข้อมูลผู้ใช้งาน</th>
+                    <th style="text-align: right; width: 80px;">คะแนน</th>
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
                 <tr>
-                    <td colspan="3" style="text-align:center;">กำลังโหลดข้อมูล...</td>
+                    <td colspan="3" style="text-align:center; padding: 30px;">กำลังดึงข้อมูลผู้ใช้ทุกคน...</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
     <div class="bottom-nav">
-        <a href="index.html" class="nav-item">
-            <span class="nav-icon">🏠</span> หน้าหลัก
-        </a>
-        <a href="rewards.html" class="nav-item active">
-            <span class="nav-icon">🎁</span> รางวัล
-        </a>
+        <a href="index.html" class="nav-item">🏠 หน้าหลัก</a>
+        <a href="rewards.html" class="nav-item">🎁 รางวัล</a>
+        <a href="user_points.html" class="nav-item active">📊 สมาชิก</a>
     </div>
 
     <script src="js/app.js"></script>
 
     <script>
-        // ✅ ไม่ต้องประกาศ firebaseConfig ซ้ำที่นี่เด็ดขาด!
-        // รอให้ทุกอย่างโหลดเสร็จแล้วสั่งรันฟังก์ชัน Leaderboard
-        window.addEventListener('load', function() {
+        window.onload = function() {
             if (typeof loadLeaderboard === 'function') {
                 loadLeaderboard();
-            } else {
-                console.error("Error: ไม่พบฟังก์ชัน loadLeaderboard ใน app.js");
             }
-        });
+        };
     </script>
 </body>
 </html>
