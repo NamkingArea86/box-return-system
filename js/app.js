@@ -84,19 +84,21 @@ async function initLIFF() {
     }
 }
 
-// 4. ฟังก์ชันลงทะเบียน
 async function performRegister() {
+    // 1. ดึงค่าจากหน้าจอ
     const name = document.getElementById('regName').value;
     const phone = document.getElementById('regPhone').value;
     const pass = document.getElementById('regPassword').value;
     const confirmPass = document.getElementById('regConfirmPassword').value;
     const lineUserId = localStorage.getItem('tempLineUserId'); 
 
+    // 2. ตรวจสอบความถูกต้องก่อนส่งข้อมูล
     if (!lineUserId) { alert("กรุณาเปิดผ่าน LINE"); return; }
     if (!name || !phone || !pass) { alert("กรุณากรอกข้อมูลให้ครบถ้วน"); return; }
     if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
+        // 3. บันทึกลง Firebase
         await db.collection("users").doc(lineUserId).set({
             name: name,
             phone: phone,
@@ -106,16 +108,18 @@ async function performRegister() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // สมัครเสร็จแล้วเซ็ตค่าล็อกอินทันที
+        // 4. เซ็ตค่าลงเครื่อง (หลังจากบันทึกสำเร็จเท่านั้น)
         localStorage.setItem('userPhone', lineUserId); 
         localStorage.setItem('realPhone', phone);
         localStorage.setItem('userName', name);
         localStorage.setItem('userPoints', 0);
 
-        alert("ลงทะเบียนสำเร็จ!");
-        window.location.replace('index.html');
+        // 5. แจ้งเตือนแค่ครั้งเดียวและย้ายหน้าทันที
+        alert("ลงทะเบียนสมาชิกใหม่สำเร็จ!");
+        window.location.replace('index.html'); // ใช้ replace เพื่อตัดวงจรการเด้งกลับ
+
     } catch (error) {
-        alert("สมัครไม่สำเร็จ: " + error.message);
+        alert("เกิดข้อผิดพลาด: " + error.message);
     }
 }
 
@@ -170,6 +174,7 @@ function logout() {
     localStorage.clear();
     window.location.replace('register.html');
 }
+
 
 
 
