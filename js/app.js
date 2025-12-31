@@ -241,48 +241,58 @@ function logout() {
     window.location.replace('login.html');
 }
 
-// 10. ฟังก์ชันการยืมกล่อง
-async function performBorrow() {
-    const boxId = document.getElementById('boxInputBorrow').value;
+// 10. ฟังก์ชันยืมกล่องพร้อมอัปโหลดรูป
+async function borrowBoxWithImage() {
+    const boxId = document.getElementById('boxInput').value;
+    const imageFile = document.getElementById('imageInput').files[0];
     const userPhone = localStorage.getItem('userPhone');
+    const btnSubmit = document.getElementById('btnSubmit');
 
-    // ตรวจสอบความครบถ้วนของข้อมูล
-    if (!boxId) { 
-        alert("กรุณาระบุหมายเลขกล่องที่ต้องการยืม"); 
+    if (!boxId || !imageFile) { 
+        alert("กรุณาระบุหมายเลขกล่องและถ่ายรูปหลักฐาน"); 
         return; 
     }
 
     if (!userPhone) {
-        alert("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+        alert("กรุณาเข้าสู่ระบบก่อนทำรายการ");
         window.location.replace('login.html');
         return;
     }
 
     try {
+        // เปลี่ยนสถานะปุ่มเพื่อป้องกันการกดซ้ำ
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "กำลังบันทึก...";
+
+        // 1. อัปโหลดรูปลง Firebase Storage
+        const storageRef = storage.ref(`borrows/${Date.now()}_${boxId}.jpg`);
+        await storageRef.put(imageFile);
+        const imageUrl = await storageRef.getDownloadURL();
+
         const dateStr = new Date().toLocaleString('th-TH');
 
-        // ข้อมูลธุรกรรมการยืม
+        // 2. บันทึกข้อมูลธุรกรรมลง Firestore
         const transData = {
             boxId: boxId,
             userPhone: userPhone,
-            type: 'borrow', // ระบุประเภทเป็น 'ยืม'
+            type: 'borrow',
+            imageUrl: imageUrl,
             date: dateStr,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
-
-        // 1. บันทึกข้อมูลลงในคอลเลกชัน transactions
         await db.collection("transactions").add(transData);
 
-        // 2. (เลือกเพิ่ม) หากต้องการอัปเดตสถานะในตัวผู้ใช้ว่ากำลังยืมอยู่
-        // await db.collection("users").doc(userPhone).update({ status: 'borrowing' });
+        // 3. (เลือกได้) หากต้องการหักแต้มมัดจำ 5 แต้มตอนยืม
+        // const userRef = db.collection("users").doc(userPhone);
+        // await userRef.update({ points: firebase.firestore.FieldValue.increment(-5) });
 
-        alert("ยืมกล่องหมายเลข " + boxId + " สำเร็จ!");
-        
-        // ส่งกลับไปหน้าหลักเพื่อดูข้อมูลที่อัปเดต
+        alert("ยืมกล่องสำเร็จ!");
         window.location.replace('index.html');
 
     } catch (error) {
-        console.error("Borrow Error:", error);
-        alert("เกิดข้อผิดพลาดในการยืม: " + error.message);
+        console.error("Error borrowing box:", error);
+        alert("เกิดข้อผิดพลาด: " + error.message);
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "ยืนยันการยืม";
     }
 }
