@@ -13,7 +13,6 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.firestore();
-const storage = firebase.storage();
 
 // 2. จัดการเมื่อโหลดหน้าจอ
 window.onload = async function() {
@@ -34,7 +33,68 @@ window.onload = async function() {
     }
 };
 
-// 3. ฟังก์ชันลงทะเบียน (เพิ่มรหัสนักศึกษา 10 หลัก)
+// 3. ฟังก์ชันยืมกล่อง (ใส่แค่เลขกล่อง + ชื่อร้าน) - เร็วมากเพราะไม่มีรูป
+async function borrowBox() {
+    const boxId = document.getElementById('boxInput').value;
+    const shopName = document.getElementById('shopSelect').value;
+    const userPhone = localStorage.getItem('userPhone');
+
+    if (!boxId || !shopName) { 
+        alert("กรุณากรอกหมายเลขกล่องและเลือกสถานที่ยืม"); 
+        return; 
+    }
+
+    try {
+        await db.collection("transactions").add({
+            boxId: boxId,
+            shopName: shopName,
+            userPhone: userPhone,
+            type: 'borrow',
+            date: new Date().toLocaleString('th-TH'),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("ยืมกล่องสำเร็จ!");
+        window.location.replace('index.html');
+    } catch (e) {
+        alert("เกิดข้อผิดพลาด: " + e.message);
+    }
+}
+
+// 4. ฟังก์ชันคืนกล่อง (สแกน QR + เลขกล่อง)
+async function returnBoxWithQR(scannedShopId) {
+    const boxId = document.getElementById('boxInputReturn').value;
+    const userPhone = localStorage.getItem('userPhone');
+
+    if (!boxId) { 
+        alert("กรุณาระบุหมายเลขกล่องก่อนสแกน"); 
+        return; 
+    }
+
+    try {
+        await db.collection("transactions").add({
+            boxId: boxId,
+            shopName: scannedShopId, // ชื่อร้านจาก QR
+            userPhone: userPhone,
+            type: 'return',
+            date: new Date().toLocaleString('th-TH'),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // อัปเดตคะแนน +5
+        await db.collection("users").doc(userPhone).update({ 
+            points: firebase.firestore.FieldValue.increment(5),
+            returnCount: firebase.firestore.FieldValue.increment(1)
+        });
+
+        alert("คืนกล่องสำเร็จ! ได้รับ 5 แต้ม");
+        window.location.replace('index.html');
+    } catch (e) {
+        alert("เกิดข้อผิดพลาด: " + e.message);
+    }
+}
+
+// --- ฟังก์ชันอื่นๆ (ลงทะเบียน, ล็อกอิน, โหลดข้อมูล) ---
 async function performRegister() {
     const name = document.getElementById('regName').value;
     const studentId = document.getElementById('regStudentId').value;
@@ -44,131 +104,17 @@ async function performRegister() {
     const pass = document.getElementById('regPassword').value;
     const confirmPass = document.getElementById('regConfirmPassword').value;
 
-    if (!name || !studentId || !faculty || !year || !phone || !pass) { 
-        alert("กรุณากรอกข้อมูลให้ครบทุกช่อง"); return; 
-    }
-
-    if (studentId.length !== 10) {
-        alert("รหัสนักศึกษาต้องมี 10 หลัก"); return;
-    }
-
-    const passRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{1,10}$/;
-    if (!passRegex.test(pass)) { 
-        alert("รหัสผ่านต้องมีอักษร+เลข ไม่เกิน 10 ตัว"); return; 
-    }
-
+    if (studentId.length !== 10) { alert("รหัสนักศึกษาต้องมี 10 หลัก"); return; }
     if (pass !== confirmPass) { alert("รหัสผ่านไม่ตรงกัน"); return; }
 
     try {
         await db.collection("users").doc(phone).set({
-            name, studentId, faculty, year, phone, password: pass,
-            points: 0, returnCount: 0,
+            name, studentId, faculty, year, phone, password: pass, points: 0, returnCount: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         localStorage.setItem('userPhone', phone);
-        alert("ลงทะเบียนสำเร็จ!");
         window.location.replace('index.html');
     } catch (e) { alert(e.message); }
-}
-
-// 4. ฟังก์ชันยืมกล่อง (Background Upload)
-async function borrowBackground() {
-    const boxId = document.getElementById('boxInput').value;
-    const shopName = document.getElementById('shopSelect').value;
-    const imageInput = document.getElementById('imageInput');
-    const imageFile = imageInput ? imageInput.files[0] : null;
-    const userPhone = localStorage.getItem('userPhone');
-
-    if (!boxId || !shopName || !imageFile) { 
-        alert("กรุณากรอกข้อมูลและเลือกรูปภาพให้ครบ"); return; 
-    }
-
-    window.location.href = 'index.html'; // ไปหน้าหลักทันที
-
-    try {
-        const compressedFile = await compressImage(imageFile);
-        const storageRef = storage.ref(`borrows/${Date.now()}_${boxId}.jpg`);
-        
-        storageRef.put(compressedFile).then(async (snapshot) => {
-            const imageUrl = await snapshot.ref.getDownloadURL();
-            db.collection("transactions").add({
-                boxId, shopName, userPhone, type: 'borrow', imageUrl,
-                date: new Date().toLocaleString('th-TH'),
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        });
-    } catch (e) { console.error(e); }
-}
-
-// 5. ฟังก์ชันคืนกล่อง
-async function returnBoxWithImage() {
-    const boxId = document.getElementById('boxInputReturn').value;
-    const imageFile = document.getElementById('imageInputReturn').files[0];
-    const userPhone = localStorage.getItem('userPhone');
-
-    if (!boxId || !imageFile) { alert("กรุณาระบุข้อมูลให้ครบ"); return; }
-
-    window.location.href = 'index.html';
-
-    try {
-        const compressedFile = await compressImage(imageFile);
-        const storageRef = storage.ref(`returns/${Date.now()}_${boxId}.jpg`);
-        
-        storageRef.put(compressedFile).then(async (snapshot) => {
-            const imageUrl = await snapshot.ref.getDownloadURL();
-            await db.collection("transactions").add({
-                boxId, userPhone, type: 'return', imageUrl,
-                date: new Date().toLocaleString('th-TH'),
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            await db.collection("users").doc(userPhone).update({ 
-                points: firebase.firestore.FieldValue.increment(5),
-                returnCount: firebase.firestore.FieldValue.increment(1)
-            });
-        });
-    } catch (e) { console.error(e); }
-}
-
-// 6. ฟังก์ชันย่อขนาดรูปภาพ
-function compressImage(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 600; 
-                const scaleSize = MAX_WIDTH / img.width;
-                canvas.width = MAX_WIDTH;
-                canvas.height = img.height * scaleSize;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.6);
-            };
-        };
-    });
-}
-
-// 7. โหลดข้อมูลผู้ใช้
-async function loadUserData() {
-    const userPhone = localStorage.getItem('userPhone');
-    if(!userPhone) return;
-    try {
-        const userDoc = await db.collection("users").doc(userPhone).get();
-        if (userDoc.exists) {
-            const data = userDoc.data();
-            const setUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
-            setUI('username', data.name);
-            setUI('userphone', data.phone);
-            setUI('userid', data.studentId); // แสดงรหัสนักศึกษา
-            setUI('userfaculty', data.faculty);
-            setUI('useryear', data.year);
-            setUI('points', data.points || 0);
-            setUI('returnCountDisplay', data.returnCount || 0);
-        }
-    } catch (e) { console.error(e); }
 }
 
 async function performLogin() {
@@ -179,8 +125,25 @@ async function performLogin() {
         if (userDoc.exists && userDoc.data().password === pass) {
             localStorage.setItem('userPhone', phone);
             window.location.replace('index.html');
-        } else { alert("เบอร์หรือรหัสผ่านไม่ถูกต้อง"); }
+        } else { alert("ข้อมูลไม่ถูกต้อง"); }
     } catch (e) { alert(e.message); }
+}
+
+async function loadUserData() {
+    const userPhone = localStorage.getItem('userPhone');
+    if(!userPhone) return;
+    const userDoc = await db.collection("users").doc(userPhone).get();
+    if (userDoc.exists) {
+        const data = userDoc.data();
+        const setUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+        setUI('username', data.name);
+        setUI('userphone', data.phone);
+        setUI('userid', data.studentId);
+        setUI('userfaculty', data.faculty);
+        setUI('useryear', data.year);
+        setUI('points', data.points);
+        setUI('returnCountDisplay', data.returnCount);
+    }
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
