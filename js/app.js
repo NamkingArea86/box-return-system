@@ -147,3 +147,58 @@ async function loadUserData() {
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
+// --- ฟังก์ชันดึงประวัติจาก Firebase ---
+async function fetchHistoryFromFirebase(phone) {
+    const container = document.getElementById('historyBox');
+    if (!container) return;
+
+    try {
+        // ดึงข้อมูลจากคอลเลกชัน transactions ของเบอร์โทรนี้ เรียงจากล่าสุดขึ้นก่อน
+        const snapshot = await db.collection("transactions")
+            .where("userPhone", "==", phone)
+            .orderBy("timestamp", "desc")
+            .get();
+
+        let html = "";
+        
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div style="text-align:center; margin-top:50px; color:#888;">
+                    <span style="font-size:50px;">📭</span>
+                    <p>ยังไม่มีประวัติการทำรายการ</p>
+                </div>`;
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const item = doc.data();
+            const isBorrow = item.type === 'borrow';
+            const statusColor = isBorrow ? '#4CAF50' : '#FF9800'; // เขียว = ยืม, ส้ม = คืน
+            const icon = isBorrow ? '📥 ยืมกล่อง' : '📤 คืนกล่อง';
+
+            html += `
+                <div class="history-item" style="border-left: 5px solid ${statusColor}; background:#fff; padding:15px; margin:10px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="color:${statusColor}; font-size:16px;">${icon}</strong>
+                        <small style="color:#888;">${item.date || 'ไม่ระบุวันที่'}</small>
+                    </div>
+                    <div style="margin-top:8px; font-size:14px; color:#444;">
+                        <p style="margin:2px 0;"><b>เลขกล่อง:</b> ${item.boxId}</p>
+                        <p style="margin:2px 0;"><b>สถานที่:</b> ${item.shopName || 'ไม่ระบุ'}</p>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (e) {
+        console.error("Error fetching history: ", e);
+        // หากเกิด Error เรื่อง Index (สำหรับครั้งแรกที่รันOrderBy)
+        container.innerHTML = `<p style="text-align:center; padding:20px; color:red;">
+            กรุณารอสักครู่ ระบบกำลังจัดเตรียมฐานข้อมูล (Indexing)...
+        </p>`;
+    }
+}
+
