@@ -35,8 +35,7 @@ window.onload = async function() {
     }
 };
 
-// --- ฟังก์ชันยืมกล่อง (Background Upload + Dropdown Shop) ---
-// ใช้ชื่อ borrowBackground ตามที่คุณตั้งไว้ใน HTML
+// --- ฟังก์ชันยืมกล่อง (ฉบับเปลี่ยนหน้าทันที ไม่ต้องรอกด Alert) ---
 async function borrowBackground() {
     const boxId = document.getElementById('boxInput').value;
     const shopName = document.getElementById('shopSelect').value;
@@ -50,32 +49,36 @@ async function borrowBackground() {
         return; 
     }
 
-    // 🚀 STEP 2: คำสั่งเปลี่ยนหน้าทันที (ผู้ใช้ไม่ต้องยืนรอนาน)
-    alert("กำลังบันทึกข้อมูลเบื้องหลัง คุณสามารถใช้งานส่วนอื่นต่อได้เลย");
-    window.location.replace('index.html');
+    // 🚀 STEP 2: เปลี่ยนหน้าทันที! (ใช้ href แทน replace เพื่อความเสถียรบนมือถือ)
+    // เราไม่ใช้ alert ตรงนี้แล้ว เพื่อให้หน้าเว็บเด้งไปทันทีที่กดปุ่ม
+    window.location.href = 'index.html'; 
 
-    // STEP 3: ทำงานเบื้องหลัง (ย่อรูป -> อัปโหลด -> บันทึก DB)
+    // STEP 3: ทำงานเบื้องหลัง (ไม่ใช้ await ขวางการเปลี่ยนหน้า)
     try {
+        // ย่อรูปก่อน (ใช้เวลาเสี้ยววินาที)
         const compressedFile = await compressImage(imageFile);
+        
         const storageRef = storage.ref(`borrows/${Date.now()}_${boxId}.jpg`);
         
-        // อัปโหลดรูป
-        const snapshot = await storageRef.put(compressedFile);
-        const imageUrl = await snapshot.ref.getDownloadURL();
+        // 📤 อัปโหลดแบบ "ไม่รอ" (Non-blocking)
+        storageRef.put(compressedFile).then(async (snapshot) => {
+            const imageUrl = await snapshot.ref.getDownloadURL();
 
-        // บันทึกข้อมูลลง Firestore
-        await db.collection("transactions").add({
-            boxId: boxId,
-            shopName: shopName,
-            userPhone: userPhone,
-            type: 'borrow',
-            imageUrl: imageUrl,
-            date: new Date().toLocaleString('th-TH'),
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        console.log("บันทึกการยืมสำเร็จ");
+            // บันทึกข้อมูลลง Firestore หลังจากได้ URL
+            db.collection("transactions").add({
+                boxId: boxId,
+                shopName: shopName,
+                userPhone: userPhone,
+                type: 'borrow',
+                imageUrl: imageUrl,
+                date: new Date().toLocaleString('th-TH'),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log("บันทึกข้อมูลเบื้องหลังเรียบร้อย");
+        }).catch(err => console.error("Upload Error:", err));
+
     } catch (error) {
-        console.error("Background Error:", error);
+        console.error("System Error:", error);
     }
 }
 
@@ -217,3 +220,4 @@ async function fetchHistoryFromFirebase(phone) {
 }
 
 function logout() { localStorage.clear(); window.location.replace('login.html'); }
+
