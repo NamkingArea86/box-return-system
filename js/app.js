@@ -435,27 +435,21 @@ async function fetchAllHistory() {
     }
 }
 
-async function deleteHistory(docId) {
-    if (!confirm("ยืนยันการลบรายการนี้?\nหากเป็นรายการ 'คืนกล่อง' จะถูกหัก 1 แต้ม และจำนวนครั้งคืนจะลดลง")) 
-        return;
+async function deleteHistory(id) {
+    if (!confirm("ยืนยันการลบรายการนี้?")) return;
 
     try {
-        const docRef = db.collection("transactions").doc(docId);
+        const docRef = db.collection("transactions").doc(id);
         const docSnap = await docRef.get();
 
         if (!docSnap.exists) {
-            alert("ไม่พบข้อมูลรายการนี้");
+            alert("ไม่พบข้อมูล");
             return;
         }
 
-        const data = docSnap.data();
-        const userPhone = data.userPhone;
-        const type = data.type;
+        const { userPhone, type } = docSnap.data();
 
-        const pointReduce = 1;
-        const returnReduce = type === "return" ? 1 : 0;
-
-        // 🔎 หา user ด้วย field phone
+        // 🔍 หา user document จาก field phone
         const userQuery = await db.collection("users")
             .where("phone", "==", userPhone)
             .limit(1)
@@ -467,25 +461,25 @@ async function deleteHistory(docId) {
         }
 
         const userRef = userQuery.docs[0].ref;
-        const userData = userQuery.docs[0].data();
 
-        const newPoints = Math.max((userData.points || 0) - pointReduce, 0);
+        if (type === "return") {
+            const userSnap = await userRef.get();
+            const points = userSnap.data().points || 0;
 
-        await userRef.update({
-            points: newPoints,
-            returnCount: firebase.firestore.FieldValue.increment(-returnReduce)
-        });
+            await userRef.update({
+                points: Math.max(points - 1, 0),
+                returnCount: firebase.firestore.FieldValue.increment(-1)
+            });
+        }
 
         await docRef.delete();
 
-        alert("ลบรายการและปรับคะแนนเรียบร้อยแล้ว");
-
-        if (typeof fetchAllHistory === 'function') fetchAllHistory();
-        if (typeof loadLeaderboard === 'function') loadLeaderboard();
+        alert("ลบและปรับคะแนนแล้ว");
+        fetchAllHistory();
 
     } catch (e) {
-        console.error("Delete Error:", e);
-        alert("เกิดข้อผิดพลาด: " + e.message);
+        console.error(e);
+        alert(e.message);
     }
 }
 
