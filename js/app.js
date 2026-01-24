@@ -385,9 +385,9 @@ async function loadLeaderboard() {
     }
 }
 
-
 async function deleteHistory(docId) {
-    if (!confirm("ยืนยันการลบรายการนี้?\nคะแนนจะถูกปรับอัตโนมัติ")) return;
+    if (!confirm("ยืนยันการลบรายการนี้?\nหากเป็นรายการ 'คืนกล่อง' จะถูกหัก 1 แต้ม และจำนวนครั้งคืนจะลดลง")) 
+        return;
 
     try {
         const docRef = db.collection("transactions").doc(docId);
@@ -438,7 +438,6 @@ async function deleteHistory(docId) {
         alert("เกิดข้อผิดพลาด: " + e.message);
     }
 }
-
 
 function handleRegTypeChange() {
     const type = document.getElementById("regType").value;

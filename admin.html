@@ -120,12 +120,11 @@
 
         // ฟังก์ชันลบประวัติ (Admin Only)
         async function deleteHistory(id) {
-            if (!confirm("⚠️ ยืนยันการลบ? \nหากเป็นรายการ 'คืนกล่อง' แต้มจะถูกหักออก 5 แต้ม และจำนวนครั้งจะลดลงทันที")) {
+            if (!confirm("⚠️ ยืนยันการลบ?\nหากเป็นรายการ 'คืนกล่อง' แต้มจะถูกหักออก 1 แต้ม และจำนวนครั้งจะลดลงทันที")) {
                 return;
             }
 
             try {
-                // 1. ดึงข้อมูลรายการที่จะลบมาเช็คก่อนว่าเป็นของใคร และเป็นประเภทไหน
                 const docRef = db.collection("transactions").doc(id);
                 const docSnap = await docRef.get();
 
@@ -136,31 +135,33 @@
 
                 const data = docSnap.data();
                 const userPhone = data.userPhone;
-                const type = data.type; // 'borrow' หรือ 'return'
+                const type = data.type;
 
-                // 2. ถ้าเป็นรายการ 'คืน (return)' ต้องหักแต้มคืน 5 แต้ม และลดจำนวนครั้งคืนลง 1
+                const userRef = db.collection("users").doc(userPhone);
+
                 if (type === 'return') {
-                    const userRef = db.collection("users").doc(userPhone);
-                
-                    // ใช้ FieldValue.increment(-ค่า) เพื่อหักลบจำนวน
+                    const userSnap = await userRef.get();
+                    const currentPoints = userSnap.data().points || 0;
+
+                    const newPoints = Math.max(currentPoints - 1, 0);
+
                     await userRef.update({
-                        points: firebase.firestore.FieldValue.increment(-5),
+                        points: newPoints,
                         returnCount: firebase.firestore.FieldValue.increment(-1)
                     });
-                console.log("หักแต้มและจำนวนครั้งคืนสำเร็จ");
                 }
-    
-                // 3. ลบรายการประวัติออกจาก transactions
+
                 await docRef.delete();
 
                 alert("ลบรายการและปรับปรุงคะแนนผู้ใช้สำเร็จ");
-                fetchAllHistory(); // รีโหลดหน้าจอใหม่
-    
+                fetchAllHistory();
+
             } catch (e) {
                 console.error("Delete Error:", e);
                 alert("ลบไม่สำเร็จ: " + e.message);
             }
         }
+
 
         // รันฟังก์ชันเมื่อเปิดหน้า
         window.onload = function() {
