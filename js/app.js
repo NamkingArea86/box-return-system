@@ -295,71 +295,101 @@ function logout() {
     window.location.replace('login.html'); 
 }
 
-// ฟังก์ชันดึงอันดับคะแนนผู้ใช้ทุกคน (Leaderboard All Users)
 async function loadLeaderboard() {
     const tableBody = document.getElementById('leaderboardBody');
     if (!tableBody) return;
 
+    // แสดงสถานะโหลด
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="3" style="text-align:center; padding:20px;">
+                ⏳ กำลังโหลดข้อมูล...
+            </td>
+        </tr>
+    `;
+
     try {
-        // 1. ลองดึงข้อมูลแบบเรียงลำดับ (วิธีนี้ต้องการ Index ใน Firebase)
         let snapshot;
+
+        // ลอง orderBy ก่อน
         try {
             snapshot = await db.collection("users")
                 .orderBy("points", "desc")
                 .get();
-        } catch (orderByError) {
-            console.warn("OrderBy Error (อาจจะลืมทำ Index):", orderByError);
-            // 2. ถ้าดึงแบบเรียงลำดับไม่ได้ ให้ดึงแบบธรรมดามาโชว์ก่อน (กันหน้าจอขาว)
+        } catch (err) {
+            console.warn("OrderBy ใช้ไม่ได้ ใช้วิธีปกติแทน:", err);
             snapshot = await db.collection("users").get();
         }
 
         if (snapshot.empty) {
-            tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:20px;'>ไม่พบรายชื่อสมาชิกในระบบ</td></tr>";
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="3" style="text-align:center; padding:20px; color:#888;">
+                        ไม่พบรายชื่อสมาชิก
+                    </td>
+                </tr>
+            `;
             return;
         }
 
-        let users = [];
+        const users = [];
+
         snapshot.forEach(doc => {
-            users.push({ id: doc.id, ...doc.data() });
+            const data = doc.data() || {};
+            users.push({
+                id: doc.id,
+                name: data.name || "ไม่ระบุชื่อ",
+                phone: data.phone || "-",
+                faculty: data.faculty || "",
+                year: data.year || "",
+                points: Number(data.points) || 0
+            });
         });
 
-        // ถ้าต้องดึงแบบธรรมดามา ให้เรียงลำดับด้วย JavaScript แทนเพื่อแก้ปัญหา Index
-        users.sort((a, b) => (b.points || 0) - (a.points || 0));
+        // เรียงซ้ำด้วย JS เพื่อความชัวร์
+        users.sort((a, b) => b.points - a.points);
 
         let html = "";
-        users.forEach((data, index) => {
+
+        users.forEach((user, index) => {
             const rank = index + 1;
-            const rowClass = rank === 1 ? 'rank-1' : '';
-            
+            const rowClass = rank === 1 ? "rank-1" : "";
+
             html += `
                 <tr class="${rowClass}">
-                    <td style="text-align:center;">${rank === 1 ? '🥇' : rank}</td>
+                    <td style="text-align:center;">${rank === 1 ? "🥇" : rank}</td>
                     <td>
-                        <div style="font-weight:bold; color:#333;">${data.name || "ไม่ระบุชื่อ"}</div>
-                        <div style="font-size:12px; color:#666;">📞 ${data.phone || "-"}</div>
-                        <div style="font-size:11px; color:#888;">${data.faculty || ""} ${data.year || ""}</div>
+                        <div style="font-weight:bold; color:#333;">${user.name}</div>
+                        <div style="font-size:12px; color:#666;">📞 ${user.phone}</div>
+                        <div style="font-size:11px; color:#888;">${user.faculty} ${user.year}</div>
                     </td>
                     <td style="text-align:right;">
-                        <span class="points-badge">${data.points || 0} แต้ม</span>
+                        <span class="points-badge">${user.points} แต้ม</span>
                     </td>
-                </tr>`;
+                </tr>
+            `;
         });
 
         tableBody.innerHTML = html;
 
-    } catch (e) {
-        console.error("Main Leaderboard Error:", e);
-        tableBody.innerHTML = "<tr><td colspan='3' style='text-align:center; color:red; padding:20px;'>เกิดข้อผิดพลาด: " + e.message + "</td></tr>";
+    } catch (error) {
+        console.error("โหลด leaderboard ล้มเหลว:", error);
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align:center; color:red; padding:20px;">
+                    ❌ เกิดข้อผิดพลาด: ${error.message}
+                </td>
+            </tr>
+        `;
     }
 }
 
-// ฟังก์ชันลบประวัติ (Admin Only) และหักแต้มคืนหากเป็นการคืนกล่อง
+
 async function deleteHistory(docId) {
-    if (!confirm("ยืนยันการลบรายการนี้?")) return;
+    if (!confirm("ยืนยันการลบรายการนี้?\nคะแนนจะถูกปรับอัตโนมัติ")) return;
 
     try {
-        console.log("กำลังลบ docId:", docId);
-
         const docRef = db.collection("transactions").doc(docId);
         const docSnap = await docRef.get();
 
@@ -370,37 +400,41 @@ async function deleteHistory(docId) {
 
         const data = docSnap.data();
         const userPhone = data.userPhone;
-        const type = data.type; 
-
-        console.log("ผู้ใช้:", userPhone, "ประเภท:", type);
+        const type = data.type;
 
         let pointReduce = 0;
         let returnReduce = 0;
 
-        if (type === "borrow") pointReduce = 1;
+        if (type === "borrow") {
+            pointReduce = 1;
+        }
+
         if (type === "return") {
             pointReduce = 1;
             returnReduce = 1;
         }
 
         const userRef = db.collection("users").doc(userPhone);
-
-        // ดึงคะแนนปัจจุบันก่อน
         const userSnap = await userRef.get();
-        const currentPoints = userSnap.data().points || 0;
 
-        // กันคะแนนติดลบ
-        const newPoints = Math.max(currentPoints - pointReduce, 0);
+        if (userSnap.exists) {
+            const currentPoints = userSnap.data().points || 0;
+            const newPoints = Math.max(currentPoints - pointReduce, 0);
 
-        // อัปเดตคะแนนและจำนวนคืน
-        await userRef.update({
-            points: newPoints,
-            returnCount: firebase.firestore.FieldValue.increment(-returnReduce)
-        });
+            await userRef.update({
+                points: newPoints,
+                returnCount: firebase.firestore.FieldValue.increment(-returnReduce)
+            });
 
+            console.log(`ลดคะแนน ${pointReduce} จาก ${userPhone}`);
+        } else {
+            console.warn("ไม่พบผู้ใช้:", userPhone);
+        }
+
+        // ลบประวัติ
         await docRef.delete();
 
-        alert("ลบรายการเรียบร้อย และปรับคะแนนแล้ว");
+        alert("ลบรายการและปรับคะแนนเรียบร้อยแล้ว");
 
         if (typeof fetchAllHistory === 'function') {
             fetchAllHistory();
