@@ -137,19 +137,33 @@ async function borrowBox() {
             date: new Date().toLocaleString('th-TH'),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
+
         await db.collection("users").doc(userPhone).update({
             points: firebase.firestore.FieldValue.increment(1)
         });
 
-        alert(
-            "✅ ยืมกล่องสำเร็จ\n\n" +
-            "📦 เลขกล่อง: " + boxId + "\n" +
-            "🏪 สถานที่ยืม: " + shopName + "\n" +
-            "⭐ ได้รับ 1 แต้ม"
-        );
-
-        window.location.replace('history.html');
-    } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
+        Swal.fire({
+            icon: 'success',      
+            title: 'ลงทะเบียนยืมกล่องสำเร็จ 🎉',
+            html: `
+                <div style="text-align:left;font-size:16px;line-height:1.8">
+                    📦 <b>เลขกล่อง:</b> ${boxId}<br>
+                    📍 <b>จุดคืน:</b> ${shopName}<br>
+                    ⭐ <b>ได้รับ:</b> 1 แต้ม
+                </div>
+            `,
+            background: '#ffffff',
+            color: '#1B5E20',
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#4CAF50'
+        }).then(() => {
+            window.location.replace('history.html');
+        });
+    } 
+    catch (e) {
+        console.error(e);
+        alert("เกิดข้อผิดพลาด: " + e.message);
+    }
 }
 
 // --- คืนกล่องแบบสแกน QR ---
@@ -186,14 +200,23 @@ async function returnBoxWithQR(scannedText) {
             returnCount: firebase.firestore.FieldValue.increment(1)
         });
 
-        alert(
-            "✅ คืนกล่องสำเร็จ\n\n" +
-            "📦 เลขกล่อง: " + boxId + "\n" +
-            "📍 จุดคืน: " + cleanLocation + "\n" +
-            "⭐ ได้รับ 1 แต้ม"
-        );
-
-        window.location.replace('history.html');
+        Swal.fire({
+            icon: 'success',
+            title: 'ลงทะเบียนคืนกล่องสำเร็จ 🎉',
+            html: `
+                <div style="text-align:left;font-size:16px;line-height:1.8">
+                    📦 <b>เลขกล่อง:</b> ${boxId}<br>
+                    📍 <b>จุดคืน:</b> ${cleanLocation}<br>
+                    ⭐ <b>ได้รับ:</b> 1 แต้ม
+                </div>
+            `,
+            background: '#ffffff',
+            color: '#1B5E20',
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#4CAF50'
+        }).then(() => {
+            window.location.replace('history.html');
+        });
     } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
 }
 
@@ -214,7 +237,10 @@ async function fetchHistoryFromFirebase(phone) {
         }
 
         const docs = [];
-        snapshot.forEach(doc => docs.push(doc.data()));
+        snapshot.forEach(doc => docs.push({
+                                    id: doc.id,
+                                    ...doc.data()
+                                    }));
         // เรียงลำดับจากใหม่ไปเก่า
         docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
@@ -329,11 +355,11 @@ async function loadLeaderboard() {
 
 // ฟังก์ชันลบประวัติ (Admin Only) และหักแต้มคืนหากเป็นการคืนกล่อง
 async function deleteHistory(docId) {
-    if (!confirm("ยืนยันการลบรายการนี้?\n- หากเป็น 'คืนกล่อง': แต้มจะลด 5 แต้ม และสถิติคืนจะลดลง 1")) {
-        return;
-    }
+    if (!confirm("ยืนยันการลบรายการนี้?")) return;
 
     try {
+        console.log("กำลังลบ docId:", docId);
+
         const docRef = db.collection("transactions").doc(docId);
         const docSnap = await docRef.get();
 
@@ -346,32 +372,40 @@ async function deleteHistory(docId) {
         const userPhone = data.userPhone;
         const type = data.type; 
 
-        // --- ส่วนที่ปรับปรุง: เช็คตัวตนผู้ใช้ก่อนหักแต้ม ---
-        if (type === 'return') {
-            const userRef = db.collection("users").doc(userPhone);
-            const userSnap = await userRef.get();
+        console.log("ผู้ใช้:", userPhone, "ประเภท:", type);
 
-            if (userSnap.exists) {
-                await userRef.update({
-                    points: firebase.firestore.FieldValue.increment(-1),
-                    returnCount: firebase.firestore.FieldValue.increment(-1)
-                });
-                console.log("หักแต้มและลดจำนวนครั้งสำเร็จสำหรับ:", userPhone);
-            } else {
-                console.warn("ไม่พบข้อมูลผู้ใช้รายนี้ในระบบ แต้มจึงไม่ถูกหัก");
-            }
+        let pointReduce = 0;
+        let returnReduce = 0;
+
+        if (type === "borrow") pointReduce = 1;
+        if (type === "return") {
+            pointReduce = 1;
+            returnReduce = 1;
         }
 
-        // ลบรายการออกจากประวัติ
+        const userRef = db.collection("users").doc(userPhone);
+
+        // ดึงคะแนนปัจจุบันก่อน
+        const userSnap = await userRef.get();
+        const currentPoints = userSnap.data().points || 0;
+
+        // กันคะแนนติดลบ
+        const newPoints = Math.max(currentPoints - pointReduce, 0);
+
+        // อัปเดตคะแนนและจำนวนคืน
+        await userRef.update({
+            points: newPoints,
+            returnCount: firebase.firestore.FieldValue.increment(-returnReduce)
+        });
+
         await docRef.delete();
 
-        alert("ลบรายการเรียบร้อยแล้ว");
-        
-        // ตรวจสอบว่ามีฟังก์ชันโหลดข้อมูลใหม่หรือไม่ก่อนเรียกใช้
+        alert("ลบรายการเรียบร้อย และปรับคะแนนแล้ว");
+
         if (typeof fetchAllHistory === 'function') {
             fetchAllHistory();
         } else {
-            location.reload(); // ถ้าไม่มีฟังก์ชันให้ Refresh หน้าแทน
+            location.reload();
         }
 
     } catch (e) {
