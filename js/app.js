@@ -402,51 +402,43 @@ async function deleteHistory(docId) {
         const userPhone = data.userPhone;
         const type = data.type;
 
-        let pointReduce = 0;
-        let returnReduce = 0;
+        const pointReduce = 1;
+        const returnReduce = type === "return" ? 1 : 0;
 
-        if (type === "borrow") {
-            pointReduce = 1;
+        // 🔎 หา user ด้วย field phone
+        const userQuery = await db.collection("users")
+            .where("phone", "==", userPhone)
+            .limit(1)
+            .get();
+
+        if (userQuery.empty) {
+            alert("ไม่พบผู้ใช้ในระบบ");
+            return;
         }
 
-        if (type === "return") {
-            pointReduce = 1;
-            returnReduce = 1;
-        }
+        const userRef = userQuery.docs[0].ref;
+        const userData = userQuery.docs[0].data();
 
-        const userRef = db.collection("users").doc(userPhone);
-        const userSnap = await userRef.get();
+        const newPoints = Math.max((userData.points || 0) - pointReduce, 0);
 
-        if (userSnap.exists) {
-            const currentPoints = userSnap.data().points || 0;
-            const newPoints = Math.max(currentPoints - pointReduce, 0);
+        await userRef.update({
+            points: newPoints,
+            returnCount: firebase.firestore.FieldValue.increment(-returnReduce)
+        });
 
-            await userRef.update({
-                points: newPoints,
-                returnCount: firebase.firestore.FieldValue.increment(-returnReduce)
-            });
-
-            console.log(`ลดคะแนน ${pointReduce} จาก ${userPhone}`);
-        } else {
-            console.warn("ไม่พบผู้ใช้:", userPhone);
-        }
-
-        // ลบประวัติ
         await docRef.delete();
 
         alert("ลบรายการและปรับคะแนนเรียบร้อยแล้ว");
 
-        if (typeof fetchAllHistory === 'function') {
-            fetchAllHistory();
-        } else {
-            location.reload();
-        }
+        if (typeof fetchAllHistory === 'function') fetchAllHistory();
+        if (typeof loadLeaderboard === 'function') loadLeaderboard();
 
     } catch (e) {
         console.error("Delete Error:", e);
         alert("เกิดข้อผิดพลาด: " + e.message);
     }
 }
+
 
 function handleRegTypeChange() {
     const type = document.getElementById("regType").value;
