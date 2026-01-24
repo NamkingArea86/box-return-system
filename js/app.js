@@ -385,6 +385,56 @@ async function loadLeaderboard() {
     }
 }
 
+async function fetchAllHistory() {
+    const container = document.getElementById('adminHistoryList');
+    if (!container) return;
+
+    try {
+        const snapshot = await db.collection("transactions")
+            .orderBy("timestamp", "desc")
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div style="text-align:center; padding:50px; color:#888;">
+                    <span style="font-size:50px;">Empty</span>
+                    <p>ยังไม่มีประวัติการทำรายการ</p>
+                </div>`;
+            return;
+        }
+
+        let html = "";
+        snapshot.forEach(doc => {
+            const item = doc.data();
+            const docId = doc.id;
+            const isBorrow = item.type === 'borrow';
+            const color = isBorrow ? '#4CAF50' : '#FF9800';
+
+            html += `
+                <div class="history-card" style="border-left: 6px solid ${color};">
+                    <div style="display:flex; justify-content:space-between;">
+                        <strong style="color:${color};">
+                            ${isBorrow ? '📥 ยืมกล่อง' : '📤 คืนกล่อง'}
+                        </strong>
+                        <small style="color:#888;">${item.date || ''}</small>
+                    </div>
+                    <div style="margin-top:8px; font-size:14px;">
+                        👤 <b>ผู้ใช้:</b> ${item.userPhone}<br>
+                        📦 <b>เลขกล่อง:</b> ${item.boxId}<br>
+                        📍 <b>สถานที่:</b> ${item.shopName || 'ไม่ระบุ'}
+                    </div>
+                    <button class="delete-btn" onclick="deleteHistory('${docId}')">🗑️ ลบ</button>
+                </div>`;
+        });
+
+        container.innerHTML = html;
+
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = `<p style="color:red;text-align:center;">${e.message}</p>`;
+    }
+}
+
 async function deleteHistory(docId) {
     if (!confirm("ยืนยันการลบรายการนี้?\nหากเป็นรายการ 'คืนกล่อง' จะถูกหัก 1 แต้ม และจำนวนครั้งคืนจะลดลง")) 
         return;
