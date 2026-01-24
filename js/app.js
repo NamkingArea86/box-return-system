@@ -137,7 +137,17 @@ async function borrowBox() {
             date: new Date().toLocaleString('th-TH'),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-        alert("ยืมกล่องสำเร็จ!");
+        await db.collection("users").doc(userPhone).update({
+            points: firebase.firestore.FieldValue.increment(1)
+        });
+
+        alert(
+            "✅ ยืมกล่องสำเร็จ\n\n" +
+            "📦 เลขกล่อง: " + boxId + "\n" +
+            "🏪 สถานที่ยืม: " + shopName + "\n" +
+            "⭐ ได้รับ 1 แต้ม"
+        );
+
         window.location.replace('history.html');
     } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
 }
@@ -172,11 +182,17 @@ async function returnBoxWithQR(scannedText) {
         });
 
         await db.collection("users").doc(userPhone).update({ 
-            points: firebase.firestore.FieldValue.increment(5),
+            points: firebase.firestore.FieldValue.increment(1),
             returnCount: firebase.firestore.FieldValue.increment(1)
         });
 
-        alert("คืนสำเร็จที่: " + cleanLocation + "\nได้รับ 5 แต้ม!");
+        alert(
+            "✅ คืนกล่องสำเร็จ\n\n" +
+            "📦 เลขกล่อง: " + boxId + "\n" +
+            "📍 จุดคืน: " + cleanLocation + "\n" +
+            "⭐ ได้รับ 1 แต้ม"
+        );
+
         window.location.replace('history.html');
     } catch (e) { alert("เกิดข้อผิดพลาด: " + e.message); }
 }
@@ -336,9 +352,8 @@ async function deleteHistory(docId) {
             const userSnap = await userRef.get();
 
             if (userSnap.exists) {
-                // ลดแต้ม 5 และ ลดจำนวนครั้งคืน 1
                 await userRef.update({
-                    points: firebase.firestore.FieldValue.increment(-5),
+                    points: firebase.firestore.FieldValue.increment(-1),
                     returnCount: firebase.firestore.FieldValue.increment(-1)
                 });
                 console.log("หักแต้มและลดจำนวนครั้งสำเร็จสำหรับ:", userPhone);
