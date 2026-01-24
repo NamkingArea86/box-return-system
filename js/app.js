@@ -364,3 +364,16 @@ async function deleteHistory(docId) {
         alert("เกิดข้อผิดพลาด: " + e.message);
     }
 }
+
+function handleRegTypeChange() {
+    const type = document.getElementById("regType").value;
+    const studentFields = document.getElementById("studentFields");
+
+    if (type === "student") {
+        studentFields.style.display = "block";
+    } else if (type === "staff" || type === "guest") {
+        studentFields.style.display = "none";
+    } else {
+        studentFields.style.display = "none";
+    }
+}
