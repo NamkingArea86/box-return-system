@@ -439,47 +439,50 @@ async function deleteHistory(id) {
     if (!confirm("ยืนยันการลบรายการนี้?")) return;
 
     try {
-        const docRef = db.collection("transactions").doc(id);
-        const docSnap = await docRef.get();
+        const txRef = db.collection("transactions").doc(id);
+        const txSnap = await txRef.get();
 
-        if (!docSnap.exists) {
-            alert("ไม่พบข้อมูล");
+        if (!txSnap.exists) {
+            alert("ไม่พบรายการ");
             return;
         }
 
-        const { userPhone, type } = docSnap.data();
+        const { userPhone, type } = txSnap.data();
 
-        // 🔍 หา user document จาก field phone
+        console.log("userPhone:", userPhone);
+
         const userQuery = await db.collection("users")
             .where("phone", "==", userPhone)
             .limit(1)
             .get();
 
         if (userQuery.empty) {
-            alert("ไม่พบผู้ใช้ในระบบ");
+            alert("ไม่พบผู้ใช้");
             return;
         }
 
         const userRef = userQuery.docs[0].ref;
+
+        console.log("update path:", userRef.path);
 
         if (type === "return") {
             const userSnap = await userRef.get();
             const points = userSnap.data().points || 0;
 
             await userRef.update({
-                points: Math.max(points - 1, 0),
+                points: Math.max(points - 5, 0),
                 returnCount: firebase.firestore.FieldValue.increment(-1)
             });
         }
 
-        await docRef.delete();
+        await txRef.delete();
 
-        alert("ลบและปรับคะแนนแล้ว");
+        alert("ลบสำเร็จ + ปรับคะแนนแล้ว");
         fetchAllHistory();
 
-    } catch (e) {
-        console.error(e);
-        alert(e.message);
+    } catch (err) {
+        console.error(err);
+        alert(err.message);
     }
 }
 
