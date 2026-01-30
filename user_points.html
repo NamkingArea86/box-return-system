@@ -18,15 +18,37 @@
         
         .admin-nav-btn {
             background: #444; color: white; padding: 8px 15px; border-radius: 20px;
-            text-decoration: none; font-size: 12px; float: right; transition: 0.3s;
+            text-decoration: none; font-size: 12px; transition: 0.3s;
+            margin-left: 5px;
         }
         .admin-nav-btn:hover { background: #000; }
+
+        /* สไตล์ปุ่มด้านล่าง */
+        .admin-footer {
+            margin-top: 30px;
+            text-align: center;
+            padding: 20px 15px 80px 15px; /* เผื่อที่ให้ bottom-nav */
+        }
+        .btn-home-admin {
+            background: #2E7D32;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+        }
     </style>
 </head>
 <body>
 
-    <div style="padding: 20px 15px 10px 15px;">
-        <a href="admin.html" class="admin-nav-btn">🛠️ ดูประวัติรวม</a>
+    <div style="padding: 20px 15px 10px 15px; overflow: hidden;">
+        <div style="float: right;">
+            <a href="admin_menu.html" class="admin-nav-btn">⬅️ เมนูแอดมิน</a>
+            <a href="admin.html" class="admin-nav-btn">🛠️ ดูประวัติรวม</a>
+        </div>
         <h2 style="margin: 0; color: #2E7D32;">📊 รายชื่อสมาชิก</h2>
         <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">แสดงรายชื่อผู้ใช้ทั้งหมดเรียงตามคะแนน</p>
     </div>
@@ -48,10 +70,10 @@
         </table>
     </div>
 
-    <div class="bottom-nav">
-        <a href="index.html" class="nav-item">🏠 หน้าหลัก</a>
-        <a href="rewards.html" class="nav-item">🎁 รางวัล</a>
-        <a href="user_points.html" class="nav-item active">📊 สมาชิก</a>
+    <div class="admin-footer">
+        <button class="btn-home-admin" onclick="location.href='admin_menu.html'">
+            🏠 กลับสู่เมนูแอดมิน
+        </button>
     </div>
 
     <script src="js/app.js"></script>

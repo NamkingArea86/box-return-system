@@ -36,7 +36,7 @@
         }
         .delete-btn {
             position: absolute;
-            top: 15px; /* ย้ายไปไว้มุมขวาบนแทน */
+            top: 15px; 
             right: 15px;
             background: #fff5f5;
             color: #e53935;
@@ -51,12 +51,30 @@
             background: #e53935;
             color: white;
         }
+        /* เพิ่มสไตล์ปุ่มด้านล่าง */
+        .admin-footer {
+            margin-top: 30px;
+            text-align: center;
+            padding: 20px 15px 50px 15px;
+        }
+        .btn-home-admin {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
 
     <div class="admin-header">
-        <a href="user_points.html" class="btn-back">⬅️ กลับ</a>
+        <a href="admin_menu.html" class="btn-back">⬅️ กลับ</a>
         <h2 style="margin:0;">🛠️ แผงควบคุมแอดมิน</h2>
         <p style="margin:5px 0 0 0; font-size:14px; opacity:0.8;">ประวัติการยืม-คืนทั้งหมดในระบบ</p>
     </div>
@@ -67,7 +85,11 @@
         </div>
     </div>
 
-    <script src="js/app.js"></script>
+    <div class="admin-footer">
+        <button class="btn-home-admin" onclick="location.href='admin_menu.html'">
+            🏠 กลับสู่เมนูแอดมิน
+        </button>
+    </div>
 
     <script src="js/app.js"></script>
 
@@ -81,5 +103,3 @@
 
 </body>
 </html>
-
-
