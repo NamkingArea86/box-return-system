@@ -24,7 +24,6 @@ window.onload = async function() {
     const userPhone = localStorage.getItem('userPhone');
     const path = window.location.pathname.toLowerCase();
     
-    // ตรวจสอบการเข้าสู่ระบบ
     if (!userPhone && !path.includes('login.html') && !path.includes('register.html')) {
         window.location.replace('login.html');
         return;
@@ -32,8 +31,29 @@ window.onload = async function() {
     
     if (userPhone) {
         await loadUserData(); 
+        
+        // --- ส่วนที่เพิ่มใหม่: เช็คเวลาคืนกล่องเฉพาะหน้า history.html ---
         if (path.includes('history.html')) {
             fetchHistoryFromFirebase(userPhone); 
+
+            // ดึงรายการล่าสุดที่ "ยืม" ไป
+            db.collection("transactions")
+                .where("userPhone", "==", userPhone)
+                .orderBy("timestamp", "desc")
+                .limit(1)
+                .get()
+                .then((querySnapshot) => {
+                    if (!querySnapshot.empty) {
+                        const lastAction = querySnapshot.docs[0].data();
+                        // ถ้าสถานะล่าสุดคือ 'borrow' ให้แสดงตัวนับถอยหลัง
+                        if (lastAction.type === 'borrow' && lastAction.timestamp) {
+                            const borrowDate = lastAction.timestamp.toDate();
+                            const borrowDisplay = document.getElementById('borrowTimeDisplay');
+                            if(borrowDisplay) borrowDisplay.innerText = lastAction.date;
+                            startCountdown(borrowDate.getTime());
+                        }
+                    }
+                });
         }
     }
 };
@@ -497,4 +517,35 @@ function handleRegTypeChange() {
     } else {
         studentFields.style.display = "none";
     }
+}
+
+// --- ฟังก์ชันนับถอยหลัง 24 ชม. ---
+function startCountdown(borrowTimestamp) {
+    const timerElement = document.getElementById('countdownTimer');
+    const section = document.getElementById('activeBorrowSection');
+    if (!timerElement || !section) return; // ป้องกัน Error ถ้าหน้าจอไม่มี Element นี้
+
+    const deadline = borrowTimestamp + (24 * 60 * 60 * 1000); // บวก 24 ชม.
+
+    const updateTimer = () => {
+        const now = new Date().getTime();
+        const distance = deadline - now;
+
+        if (distance < 0) {
+            section.style.background = "#ffebee"; 
+            timerElement.innerHTML = "เกินกำหนดเวลาคืน!";
+            return;
+        }
+
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        timerElement.innerHTML = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    section.style.display = 'block';
+    updateTimer();
+    setInterval(updateTimer, 1000);
 }
