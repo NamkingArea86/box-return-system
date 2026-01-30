@@ -550,68 +550,70 @@ function startCountdown(borrowTimestamp) {
     setInterval(updateTimer, 1000);
 }
 
+// --- ฟังก์ชันโหลดรายการค้างส่งสำหรับ Admin ---
 async function loadActiveBorrows() {
     const container = document.getElementById('adminActiveList');
     if (!container) return;
 
     try {
-        // ดึงรายการทั้งหมดเรียงตามเวลาล่าสุด
-        const snapshot = await db.collection("transactions")
-            .orderBy("timestamp", "desc")
-            .get();
-
-        if (snapshot.empty) {
-            container.innerHTML = "<p style='text-align:center;'>ไม่มีรายการยืมในระบบ</p>";
-            return;
-        }
-
-        // กรองหาเฉพาะรายการล่าสุดของแต่ละกล่อง/ผู้ใช้ ที่ยังเป็นสถานะ 'borrow'
+        const snapshot = await db.collection("transactions").orderBy("timestamp", "desc").get();
         const activeBorrows = {}; 
+        
+        // Logic: ดึงรายการล่าสุดของแต่ละกล่องมาเช็คสถานะ
         snapshot.forEach(doc => {
             const data = doc.data();
-            const boxId = data.boxId;
-            // ถ้ายังไม่มีข้อมูลกล่องนี้ใน List ให้เก็บค่าล่าสุดไว้
-            if (!activeBorrows[boxId]) {
-                activeBorrows[boxId] = data;
+            if (!activeBorrows[data.boxId]) {
+                activeBorrows[data.boxId] = data;
             }
         });
 
-        let html = "";
-        const now = new Date().getTime();
+        const renderItems = () => {
+            let html = "";
+            const now = new Date().getTime();
 
-        Object.values(activeBorrows).forEach(item => {
-            // แสดงเฉพาะรายการที่เป็น 'borrow' (ถ้าล่าสุดเป็น 'return' จะไม่แสดง)
-            if (item.type === 'borrow' && item.timestamp) {
-                const borrowDate = item.timestamp.toDate();
-                const borrowTime = borrowDate.getTime();
-                const deadline = borrowTime + (24 * 60 * 60 * 1000);
-                const isOverdue = now > deadline;
+            Object.values(activeBorrows).forEach(item => {
+                if (item.type === 'borrow' && item.timestamp) {
+                    const borrowTime = item.timestamp.toDate().getTime();
+                    const deadline = borrowTime + (24 * 60 * 60 * 1000);
+                    const isOverdue = now > deadline;
+                    
+                    // คำนวณเวลาที่เหลือ
+                    const diff = isOverdue ? now - deadline : deadline - now;
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+                    const timeString = `${hours}ชม. ${mins}น. ${secs}ว.`;
 
-                html += `
-                    <div class="borrow-card ${isOverdue ? 'overdue' : ''}">
-                        <div style="display:flex; justify-content:space-between;">
-                            <strong>👤 ผู้ใช้: ${item.userPhone}</strong>
-                            <span class="${isOverdue ? 'overdue-text' : ''}">${isOverdue ? '⚠️ เกินกำหนด' : '✅ ยังอยู่ในเวลา'}</span>
-                        </div>
-                        <div style="margin-top:10px; font-size:14px;">
-                            📦 <b>เลขกล่อง:</b> ${item.boxId}<br>
-                            📍 <b>สถานที่ยืม:</b> ${item.shopName}<br>
-                            🕒 <b>เวลายืม:</b> ${item.date}
-                        </div>
-                        <div style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.05); border-radius:5px; text-align:center;">
-                            <div style="font-size:12px;">เวลาที่เหลือ/เกินกำหนด</div>
-                            <div class="timer" id="timer-${item.boxId}">${calculateTimeLeft(deadline)}</div>
-                        </div>
-                    </div>
-                `;
-            }
-        });
+                    html += `
+                        <div class="borrow-card ${isOverdue ? 'overdue' : ''}" style="margin-bottom:15px; border-radius:15px; border-left:8px solid ${isOverdue ? '#f44336' : '#2196F3'}; background:${isOverdue ? '#fff1f0' : 'white'}; padding:15px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="font-size:16px;">📦 กล่องหมายเลข: ${item.boxId}</strong>
+                                <span style="padding:4px 8px; border-radius:5px; font-size:12px; background:${isOverdue ? '#ff4d4f' : '#52c41a'}; color:white;">
+                                    ${isOverdue ? 'เกินกำหนด' : 'ยังไม่ครบเวลา'}
+                                </span>
+                            </div>
+                            <div style="margin:10px 0; font-size:14px; color:#555;">
+                                👤 <b>ผู้ยืม:</b> ${item.userPhone}<br>
+                                📍 <b>จุดยืม:</b> ${item.shopName}<br>
+                                🕒 <b>เวลาที่ยืม:</b> ${item.date}
+                            </div>
+                            <div style="text-align:center; padding:10px; border-radius:10px; background:rgba(0,0,0,0.03);">
+                                <small>${isOverdue ? '⚠️ ค้างส่งมาแล้ว' : '⌛ จะครบกำหนดใน'}</small>
+                                <div style="font-size:20px; font-weight:bold; color:${isOverdue ? '#d32f2f' : '#1976d2'};">
+                                    ${timeString}
+                                </div>
+                            </div>
+                        </div>`;
+                }
+            });
+            container.innerHTML = html || "<p style='text-align:center; color:#888;'>ไม่มีคนค้างส่งในขณะนี้</p>";
+        };
 
-        container.innerHTML = html || "<p style='text-align:center;'>ไม่มีคนค้างส่งในขณะนี้</p>";
+        renderItems();
+        setInterval(renderItems, 1000); // อัปเดตเวลาทุกวินาที
 
     } catch (e) {
-        console.error(e);
-        container.innerHTML = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+        container.innerHTML = "Error: " + e.message;
     }
 }
 
