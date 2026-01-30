@@ -549,3 +549,83 @@ function startCountdown(borrowTimestamp) {
     updateTimer();
     setInterval(updateTimer, 1000);
 }
+
+async function loadActiveBorrows() {
+    const container = document.getElementById('adminActiveList');
+    if (!container) return;
+
+    try {
+        // ดึงรายการทั้งหมดเรียงตามเวลาล่าสุด
+        const snapshot = await db.collection("transactions")
+            .orderBy("timestamp", "desc")
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = "<p style='text-align:center;'>ไม่มีรายการยืมในระบบ</p>";
+            return;
+        }
+
+        // กรองหาเฉพาะรายการล่าสุดของแต่ละกล่อง/ผู้ใช้ ที่ยังเป็นสถานะ 'borrow'
+        const activeBorrows = {}; 
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const boxId = data.boxId;
+            // ถ้ายังไม่มีข้อมูลกล่องนี้ใน List ให้เก็บค่าล่าสุดไว้
+            if (!activeBorrows[boxId]) {
+                activeBorrows[boxId] = data;
+            }
+        });
+
+        let html = "";
+        const now = new Date().getTime();
+
+        Object.values(activeBorrows).forEach(item => {
+            // แสดงเฉพาะรายการที่เป็น 'borrow' (ถ้าล่าสุดเป็น 'return' จะไม่แสดง)
+            if (item.type === 'borrow' && item.timestamp) {
+                const borrowDate = item.timestamp.toDate();
+                const borrowTime = borrowDate.getTime();
+                const deadline = borrowTime + (24 * 60 * 60 * 1000);
+                const isOverdue = now > deadline;
+
+                html += `
+                    <div class="borrow-card ${isOverdue ? 'overdue' : ''}">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>👤 ผู้ใช้: ${item.userPhone}</strong>
+                            <span class="${isOverdue ? 'overdue-text' : ''}">${isOverdue ? '⚠️ เกินกำหนด' : '✅ ยังอยู่ในเวลา'}</span>
+                        </div>
+                        <div style="margin-top:10px; font-size:14px;">
+                            📦 <b>เลขกล่อง:</b> ${item.boxId}<br>
+                            📍 <b>สถานที่ยืม:</b> ${item.shopName}<br>
+                            🕒 <b>เวลายืม:</b> ${item.date}
+                        </div>
+                        <div style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.05); border-radius:5px; text-align:center;">
+                            <div style="font-size:12px;">เวลาที่เหลือ/เกินกำหนด</div>
+                            <div class="timer" id="timer-${item.boxId}">${calculateTimeLeft(deadline)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        container.innerHTML = html || "<p style='text-align:center;'>ไม่มีคนค้างส่งในขณะนี้</p>";
+
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+    }
+}
+
+// ฟังก์ชันช่วยคำนวณเวลาสำหรับหน้าแอดมิน
+function calculateTimeLeft(deadline) {
+    const now = new Date().getTime();
+    const distance = deadline - now;
+
+    if (distance < 0) {
+        return "เกินกำหนดแล้ว";
+    }
+
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    return `${hours}ชม. ${minutes}น. ${seconds}ว.`;
+}

@@ -48,45 +48,5 @@
 
     <script src="js/app.js"></script>
 
-    <script>
-        // เมื่อโหลดหน้าสำเร็จ
-        window.onload = async function() {
-            const userPhone = localStorage.getItem('userPhone');
-            const path = window.location.pathname.toLowerCase();
-    
-            if (!userPhone && !path.includes('login.html') && !path.includes('register.html')) {
-                window.location.replace('login.html');
-                return;
-            }
-    
-            if (userPhone) {
-                await loadUserData(); 
-        
-                // --- ส่วนที่เพิ่มใหม่: เช็คเวลาคืนกล่องเฉพาะหน้า history.html ---
-                if (path.includes('history.html')) {
-                    fetchHistoryFromFirebase(userPhone); 
-
-                    // ดึงรายการล่าสุดที่ "ยืม" ไป
-                    db.collection("transactions")
-                        .where("userPhone", "==", userPhone)
-                        .orderBy("timestamp", "desc")
-                        .limit(1)
-                        .get()
-                        .then((querySnapshot) => {
-                            if (!querySnapshot.empty) {
-                                const lastAction = querySnapshot.docs[0].data();
-                                // ถ้าสถานะล่าสุดคือ 'borrow' ให้แสดงตัวนับถอยหลัง
-                                if (lastAction.type === 'borrow' && lastAction.timestamp) {
-                                    const borrowDate = lastAction.timestamp.toDate();
-                                    const borrowDisplay = document.getElementById('borrowTimeDisplay');
-                                    if(borrowDisplay) borrowDisplay.innerText = lastAction.date;
-                                    startCountdown(borrowDate.getTime());
-                                }
-                            }
-                        });
-                }
-            }
-        };
-    </script>
 </body>
 </html>
