@@ -443,7 +443,6 @@ async function fetchAllHistory() {
                         📦 <b>เลขกล่อง:</b> ${item.boxId}<br>
                         📍 <b>สถานที่:</b> ${item.shopName || 'ไม่ระบุ'}
                     </div>
-                    <button class="delete-btn" onclick="deleteHistory('${docId}')">🗑️ ลบ</button>
                 </div>`;
         });
 
